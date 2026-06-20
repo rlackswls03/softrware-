@@ -1,0 +1,80 @@
+{
+  "seeds": [42],
+  "dataset": {
+    "name": "MNIST",
+    "data_dir": "data",
+    "download": true,
+    "validation_size": 5000,
+    "train_subset": null,
+    "validation_subset": null,
+    "test_subset": null,
+    "fixed_test_subset_seed": 42
+  },
+  "models": [
+    "lenet_standard",
+    "smallcnn_standard",
+    "lenet_fgsm_at",
+    "smallcnn_fgsm_at"
+  ],
+  "training": {
+    "batch_size": 128,
+    "test_batch_size": 256,
+    "epochs": 5,
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "num_workers": null,
+    "loss": "CrossEntropyLoss",
+    "fgsm_adversarial_epsilon": 0.25,
+    "clean_loss_weight": 0.5,
+    "adversarial_loss_weight": 0.5,
+    "deterministic": true
+  },
+  "evaluation": {
+    "fgsm_epsilons": [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3],
+    "transfer_model_order": [
+      "lenet_standard",
+      "smallcnn_standard",
+      "lenet_fgsm_at",
+      "smallcnn_fgsm_at"
+    ],
+    "pgd": {
+      "epsilon": 0.25,
+      "steps": 10,
+      "alpha": null,
+      "random_start": true
+    }
+  },
+  "adversarial_training": {
+    "alpha": 0.5
+  },
+  "paths": {
+    "checkpoints_dir": "checkpoints",
+    "results_dir": "results",
+    "raw_dir": "results/raw",
+    "aggregated_dir": "results/aggregated",
+    "figures_dir": "results/figures"
+  },
+  "reference_robust_accuracy_target": 0.9,
+  "quick": {
+    "enabled": false,
+    "message": "Quick mode is only for pipeline connectivity checks, not performance conclusions.",
+    "seeds": [42],
+    "dataset": {
+      "train_subset": 2000,
+      "validation_subset": 500,
+      "test_subset": 1000
+    },
+    "training": {
+      "epochs": 1
+    },
+    "evaluation": {
+      "fgsm_epsilons": [0.0, 0.1, 0.25],
+      "pgd": {
+        "epsilon": 0.25,
+        "steps": 3,
+        "alpha": null,
+        "random_start": true
+      }
+    }
+  }
+}

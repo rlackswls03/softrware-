@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adversarial-mnist-fgsm"
+version = "0.1.0"
+description = "Reproducible MNIST FGSM adversarial training and transferability study."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Research Team" }
+]
+dependencies = [
+  "torch",
+  "torchvision",
+  "numpy",
+  "pandas",
+  "matplotlib",
+  "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["adversarial_mnist"]
