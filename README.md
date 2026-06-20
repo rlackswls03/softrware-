@@ -84,8 +84,15 @@ python -m scripts.smoke_test
 - `results/raw/transferability_long.csv`: source-target FGSM 전이성 long-form 결과.
 - `results/raw/pgd_whitebox.csv`: PGD L-infinity white-box 평가.
 - `results/aggregated/*.csv`: 여러 seed 평균과 표준편차.
-- `results/figures/*.png`: robustness curve, heatmap, 비교 bar chart, 공격 예시.
+- `results/figures/*.png`: robustness curve, epsilon별 transferability heatmap, clean/robust 비교 bar chart, clean accuracy retention, PGD white-box bar chart, 공격 예시.
+- `results/figures/figure_index.md`: 생성된 그래프를 한 번에 훑어볼 수 있는 Markdown 인덱스.
 - `results/summary.md`: CSV에서 자동 생성한 요약 보고서.
+
+그래프만 다시 만들고 싶으면 기존 CSV를 유지한 채 다음 명령을 실행한다.
+
+```bash
+python -m scripts.plot_results --config configs/default.json
+```
 
 ## 10. 지표 정의
 

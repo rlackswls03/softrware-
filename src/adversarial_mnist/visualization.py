@@ -133,6 +133,20 @@ def plot_transferability_heatmap(
     plt.close()
 
 
+def plot_all_transferability_heatmaps(
+    transfer_csv: str | Path,
+    figures_dir: str | Path,
+    epsilons: list[float],
+) -> None:
+    """Plot one transferability heatmap for every configured epsilon."""
+    for epsilon in epsilons:
+        plot_transferability_heatmap(
+            transfer_csv,
+            Path(figures_dir) / f"transferability_eps_{epsilon:.2f}.png",
+            epsilon=epsilon,
+        )
+
+
 def plot_clean_robust_comparison(
     clean_csv: str | Path,
     robustness_csv: str | Path,
@@ -171,6 +185,82 @@ def plot_clean_robust_comparison(
     plt.title("Clean vs Robust Accuracy")
     plt.legend()
     plt.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    plt.close()
+
+
+def plot_clean_accuracy_retention(
+    clean_csv: str | Path,
+    output_path: str | Path,
+) -> None:
+    """Plot clean accuracy retention for FGSM adversarially trained models."""
+    clean_source = _require_file(clean_csv)
+    clean = pd.read_csv(clean_source)
+    _require_columns(clean, {"model", "clean_accuracy"}, clean_source)
+    clean_means = clean.groupby("model")["clean_accuracy"].mean()
+    retention = _retention_by_model(clean_means.reindex(MODEL_ORDER))
+    models = ["lenet_fgsm_at", "smallcnn_fgsm_at"]
+    values = [retention.get(model_key, math.nan) for model_key in models]
+
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(models, values, color=["#4c78a8", "#59a14f"])
+    plt.axhline(100.0, color="#444444", linestyle="--", linewidth=1, label="Standard counterpart")
+    plt.ylabel("Clean accuracy retention (%)")
+    plt.title("Clean Accuracy Retention of FGSM-AT Models")
+    upper = max([100.0, *[value for value in values if not math.isnan(value)]]) * 1.15
+    plt.ylim(0.0, upper)
+    plt.xticks(rotation=20, ha="right")
+    plt.grid(axis="y", alpha=0.3)
+    plt.legend()
+    for bar, value in zip(bars, values, strict=True):
+        label = "NaN" if math.isnan(value) else f"{value:.1f}%"
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            0.0 if math.isnan(value) else value,
+            label,
+            ha="center",
+            va="bottom",
+        )
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    plt.close()
+
+
+def plot_pgd_whitebox_bar(
+    pgd_csv: str | Path,
+    output_path: str | Path,
+) -> None:
+    """Plot PGD white-box robust accuracy as a bar chart."""
+    pgd_source = _require_file(pgd_csv)
+    pgd = pd.read_csv(pgd_source)
+    _require_columns(pgd, {"model", "robust_accuracy", "epsilon", "pgd_steps"}, pgd_source)
+    pgd_mean = pgd.groupby("model")["robust_accuracy"].mean().reindex(MODEL_ORDER)
+    models = [model_key for model_key in MODEL_ORDER if model_key in pgd_mean.index]
+    epsilon = float(pgd["epsilon"].iloc[0])
+    steps = int(pgd["pgd_steps"].iloc[0])
+
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    plt.figure(figsize=(9, 5.5))
+    bars = plt.bar(models, [pgd_mean[model_key] for model_key in models], color="#8e6c8a")
+    plt.ylabel("Robust accuracy")
+    plt.ylim(0.0, 1.02)
+    plt.title(f"PGD White-Box Robust Accuracy (epsilon={epsilon:g}, steps={steps})")
+    plt.xticks(rotation=25, ha="right")
+    plt.grid(axis="y", alpha=0.3)
+    for bar, model_key in zip(bars, models, strict=True):
+        value = float(pgd_mean[model_key])
+        label = "NaN" if math.isnan(value) else f"{value * 100:.1f}%"
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            0.0 if math.isnan(value) else value,
+            label,
+            ha="center",
+            va="bottom",
+        )
     plt.tight_layout()
     plt.savefig(output, dpi=200)
     plt.close()
@@ -222,10 +312,10 @@ def plot_all_results(config: dict[str, Any]) -> None:
     figures_dir = ensure_dir(config["paths"]["figures_dir"])
     epsilon = float(config["evaluation"]["pgd"].get("epsilon", 0.25))
     plot_robustness_curve(raw_dir / "fgsm_robustness.csv", figures_dir / "robustness_curve.png")
-    plot_transferability_heatmap(
+    plot_all_transferability_heatmaps(
         raw_dir / "transferability_long.csv",
-        figures_dir / f"transferability_eps_{epsilon:.2f}.png",
-        epsilon=epsilon,
+        figures_dir,
+        [float(value) for value in config["evaluation"]["fgsm_epsilons"]],
     )
     plot_clean_robust_comparison(
         raw_dir / "clean_accuracy.csv",
@@ -233,10 +323,16 @@ def plot_all_results(config: dict[str, Any]) -> None:
         figures_dir / "clean_robust_comparison.png",
         epsilon=epsilon,
     )
+    plot_clean_accuracy_retention(
+        raw_dir / "clean_accuracy.csv",
+        figures_dir / "clean_accuracy_retention.png",
+    )
+    plot_pgd_whitebox_bar(raw_dir / "pgd_whitebox.csv", figures_dir / "pgd_whitebox.png")
     plot_adversarial_examples(
         raw_dir / "adversarial_examples.pt",
         figures_dir / "adversarial_examples.png",
     )
+    generate_figures_index(figures_dir, figures_dir / "figure_index.md")
 
 
 def _model_clean_means(clean: pd.DataFrame) -> pd.Series:
@@ -387,3 +483,22 @@ def generate_summary_markdown(config: dict[str, Any], output_path: str | Path) -
     output = Path(output_path)
     ensure_dir(output.parent)
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def generate_figures_index(figures_dir: str | Path, output_path: str | Path) -> None:
+    """Write a small Markdown index for generated graph files."""
+    figures_path = Path(figures_dir)
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    descriptions = {
+        "robustness_curve.png": "FGSM epsilon별 robust accuracy 곡선",
+        "clean_robust_comparison.png": "clean accuracy와 epsilon=0.25 FGSM robust accuracy 비교",
+        "clean_accuracy_retention.png": "FGSM adversarial training 모델의 clean accuracy retention",
+        "pgd_whitebox.png": "PGD L-infinity white-box robust accuracy 비교",
+        "adversarial_examples.png": "원본, FGSM, PGD 이미지 예시",
+    }
+    lines = ["# Figure Index", ""]
+    for figure in sorted(figures_path.glob("*.png")):
+        description = descriptions.get(figure.name, "FGSM 전이성 heatmap")
+        lines.extend([f"## {figure.name}", "", description, "", f"![]({figure.name})", ""])
+    output.write_text("\n".join(lines), encoding="utf-8")

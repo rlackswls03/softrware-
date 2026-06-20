@@ -15,6 +15,7 @@ results/raw/*.pt
 results/raw/*.npz
 results/aggregated/*.csv
 results/figures/*.png
+results/figures/*.md
 results/smoke/
 results/.matplotlib/
 
