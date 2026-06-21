@@ -1,0 +1,13 @@
+model,architecture,training,seed,evaluated_samples,clean_accuracy,runtime_seconds,device
+lenet_standard,lenet,standard,42,10000,0.9824,2.05450589999964,cpu
+smallcnn_standard,smallcnn,standard,42,10000,0.9924,7.027234100001806,cpu
+lenet_fgsm_at,lenet,fgsm_at,42,10000,0.9725,1.6366142999977455,cpu
+smallcnn_fgsm_at,smallcnn,fgsm_at,42,10000,0.992,6.878347800004121,cpu
+lenet_standard,lenet,standard,123,10000,0.9842,1.7586958999963826,cpu
+smallcnn_standard,smallcnn,standard,123,10000,0.9936,7.558033300003444,cpu
+lenet_fgsm_at,lenet,fgsm_at,123,10000,0.9793,1.4717820000005304,cpu
+smallcnn_fgsm_at,smallcnn,fgsm_at,123,10000,0.9916,7.417885100003332,cpu
+lenet_standard,lenet,standard,2026,10000,0.9838,1.9809887000010349,cpu
+smallcnn_standard,smallcnn,standard,2026,10000,0.9916,7.482768300003954,cpu
+lenet_fgsm_at,lenet,fgsm_at,2026,10000,0.9737,1.5595440000033705,cpu
+smallcnn_fgsm_at,smallcnn,fgsm_at,2026,10000,0.9922,7.358548600008362,cpu

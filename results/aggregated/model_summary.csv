@@ -1,0 +1,5 @@
+model,architecture,training,clean_accuracy_mean,clean_accuracy_std
+lenet_fgsm_at,lenet,fgsm_at,0.9751666666666666,0.003629508690350938
+lenet_standard,lenet,standard,0.9834666666666667,0.000945163125250444
+smallcnn_fgsm_at,smallcnn,fgsm_at,0.9919333333333333,0.0003055050463303557
+smallcnn_standard,smallcnn,standard,0.9925333333333333,0.0010066445913694529

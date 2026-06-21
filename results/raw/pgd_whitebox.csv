@@ -1,0 +1,13 @@
+model,architecture,training,attack,epsilon,pgd_steps,pgd_alpha,pgd_random_start,seed,evaluated_samples,robust_accuracy,attack_success_rate,runtime_seconds,device
+lenet_standard,lenet,standard,PGD_LINF,0.25,10,0.025,True,42,10000,0.0033,0.9967,18.78246489999583,cpu
+smallcnn_standard,smallcnn,standard,PGD_LINF,0.25,10,0.025,True,42,10000,0.0093,0.9907,134.5223122000025,cpu
+lenet_fgsm_at,lenet,fgsm_at,PGD_LINF,0.25,10,0.025,True,42,10000,0.0291,0.9709,18.100456799998938,cpu
+smallcnn_fgsm_at,smallcnn,fgsm_at,PGD_LINF,0.25,10,0.025,True,42,10000,0.2981,0.7019,132.05572060000122,cpu
+lenet_standard,lenet,standard,PGD_LINF,0.25,10,0.025,True,123,10000,0.006,0.994,19.36398830001417,cpu
+smallcnn_standard,smallcnn,standard,PGD_LINF,0.25,10,0.025,True,123,10000,0.0161,0.9839,130.13188090000767,cpu
+lenet_fgsm_at,lenet,fgsm_at,PGD_LINF,0.25,10,0.025,True,123,10000,0.4026,0.5973999999999999,20.06965499999933,cpu
+smallcnn_fgsm_at,smallcnn,fgsm_at,PGD_LINF,0.25,10,0.025,True,123,10000,0.0008,0.9992,131.3580123000138,cpu
+lenet_standard,lenet,standard,PGD_LINF,0.25,10,0.025,True,2026,10000,0.0163,0.9837,18.382283400002052,cpu
+smallcnn_standard,smallcnn,standard,PGD_LINF,0.25,10,0.025,True,2026,10000,0.0028,0.9972,137.89418099999602,cpu
+lenet_fgsm_at,lenet,fgsm_at,PGD_LINF,0.25,10,0.025,True,2026,10000,0.0301,0.9699,19.76004809999722,cpu
+smallcnn_fgsm_at,smallcnn,fgsm_at,PGD_LINF,0.25,10,0.025,True,2026,10000,0.0031,0.9969,138.27977300000202,cpu

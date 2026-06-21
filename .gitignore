@@ -7,16 +7,6 @@ __pycache__/
 .mypy_cache/
 
 data/MNIST/
-checkpoints/*.pt
-results/*.json
-results/*.md
-results/raw/*.csv
-results/raw/*.pt
-results/raw/*.npz
-results/aggregated/*.csv
-results/figures/*.png
-results/figures/*.md
-results/smoke/
 results/.matplotlib/
 
 .DS_Store
