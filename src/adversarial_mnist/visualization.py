@@ -233,33 +233,60 @@ def plot_pgd_whitebox_bar(
     pgd_csv: str | Path,
     output_path: str | Path,
 ) -> None:
-    """Plot PGD white-box robust accuracy as a bar chart."""
+    """Plot PGD white-box robust accuracy with seed points and std error bars."""
     pgd_source = _require_file(pgd_csv)
     pgd = pd.read_csv(pgd_source)
-    _require_columns(pgd, {"model", "robust_accuracy", "epsilon", "pgd_steps"}, pgd_source)
-    pgd_mean = pgd.groupby("model")["robust_accuracy"].mean().reindex(MODEL_ORDER)
-    models = [model_key for model_key in MODEL_ORDER if model_key in pgd_mean.index]
+    _require_columns(pgd, {"model", "seed", "robust_accuracy", "epsilon", "pgd_steps"}, pgd_source)
+    stats = pgd.groupby("model")["robust_accuracy"].agg(["mean", "std"]).reindex(MODEL_ORDER)
+    models = [model_key for model_key in MODEL_ORDER if model_key in stats.index]
+    means = [float(stats.loc[model_key, "mean"]) for model_key in models]
+    stds = [float(stats.loc[model_key, "std"]) if not pd.isna(stats.loc[model_key, "std"]) else 0.0 for model_key in models]
     epsilon = float(pgd["epsilon"].iloc[0])
     steps = int(pgd["pgd_steps"].iloc[0])
+    x_positions = np.arange(len(models))
 
     output = Path(output_path)
     ensure_dir(output.parent)
-    plt.figure(figsize=(9, 5.5))
-    bars = plt.bar(models, [pgd_mean[model_key] for model_key in models], color="#8e6c8a")
+    plt.figure(figsize=(10, 6.2))
+    bars = plt.bar(
+        x_positions,
+        means,
+        yerr=stds,
+        capsize=6,
+        color="#8e6c8a",
+        alpha=0.8,
+        label="mean ± std",
+    )
+    seeds = sorted(pgd["seed"].unique())
+    offsets = np.linspace(-0.18, 0.18, num=len(seeds)) if len(seeds) > 1 else np.array([0.0])
+    for offset, seed in zip(offsets, seeds, strict=True):
+        seed_rows = pgd[pgd["seed"] == seed].set_index("model")
+        values = [float(seed_rows.loc[model_key, "robust_accuracy"]) for model_key in models]
+        plt.scatter(
+            x_positions + offset,
+            values,
+            s=46,
+            edgecolors="black",
+            linewidths=0.5,
+            label=f"seed {seed}",
+            zorder=3,
+        )
     plt.ylabel("Robust accuracy")
-    plt.ylim(0.0, 1.02)
+    upper = max(0.45, max(mean + std for mean, std in zip(means, stds, strict=True)) + 0.08)
+    plt.ylim(0.0, min(1.02, upper))
     plt.title(f"PGD White-Box Robust Accuracy (epsilon={epsilon:g}, steps={steps})")
-    plt.xticks(rotation=25, ha="right")
+    plt.xticks(x_positions, models, rotation=25, ha="right")
     plt.grid(axis="y", alpha=0.3)
-    for bar, model_key in zip(bars, models, strict=True):
-        value = float(pgd_mean[model_key])
-        label = "NaN" if math.isnan(value) else f"{value * 100:.1f}%"
+    plt.legend(ncol=2)
+    for bar, mean, std in zip(bars, means, stds, strict=True):
+        label = f"{mean * 100:.1f}% ± {std * 100:.1f}p"
         plt.text(
             bar.get_x() + bar.get_width() / 2,
-            0.0 if math.isnan(value) else value,
+            mean + std + 0.01,
             label,
             ha="center",
             va="bottom",
+            fontsize=8,
         )
     plt.tight_layout()
     plt.savefig(output, dpi=200)
@@ -494,7 +521,7 @@ def generate_figures_index(figures_dir: str | Path, output_path: str | Path) -> 
         "robustness_curve.png": "FGSM epsilon별 robust accuracy 곡선",
         "clean_robust_comparison.png": "clean accuracy와 epsilon=0.25 FGSM robust accuracy 비교",
         "clean_accuracy_retention.png": "FGSM adversarial training 모델의 clean accuracy retention",
-        "pgd_whitebox.png": "PGD L-infinity white-box robust accuracy 비교",
+        "pgd_whitebox.png": "PGD L-infinity white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시",
         "adversarial_examples.png": "원본, FGSM, PGD 이미지 예시",
     }
     lines = ["# Figure Index", ""]

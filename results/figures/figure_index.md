@@ -20,7 +20,7 @@ clean accuracy와 epsilon=0.25 FGSM robust accuracy 비교
 
 ## pgd_whitebox.png
 
-PGD L-infinity white-box robust accuracy 비교
+PGD L-infinity white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시
 
 ![](pgd_whitebox.png)
 
