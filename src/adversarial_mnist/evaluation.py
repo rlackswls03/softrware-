@@ -14,7 +14,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from adversarial_mnist.attacks import fgsm_attack, pgd_linf_attack
+from adversarial_mnist.attacks import fgsm_attack, pgd_linf_attack, pgd_linf_attack_restarts
 from adversarial_mnist.metrics import (
     aggregate_mean_std,
     robust_accuracy,
@@ -329,6 +329,86 @@ def evaluate_all_pgd_whitebox(
                 steps=int(pgd_config.get("steps", 10)),
                 alpha=pgd_config.get("alpha"),
                 random_start=bool(pgd_config.get("random_start", True)),
+            )
+        )
+    return rows
+
+
+def evaluate_pgd_whitebox_restarts(
+    model_key: str,
+    model: nn.Module,
+    loader: DataLoader,
+    seed: int,
+    device: torch.device,
+    epsilon: float = 0.25,
+    steps: int = 20,
+    restarts: int = 5,
+    alpha: float | None = None,
+) -> dict[str, Any]:
+    """Evaluate PGD white-box robustness with multiple random restarts."""
+    start = perf_counter()
+    model.eval()
+    total = 0
+    adv_correct = 0
+    for inputs, targets in loader:
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+        x_adv = pgd_linf_attack_restarts(
+            model,
+            inputs,
+            targets,
+            epsilon=epsilon,
+            steps=steps,
+            restarts=restarts,
+            alpha=alpha,
+        )
+        target_adv_correct = _predict_correct(model, x_adv, targets)
+        adv_correct += int(target_adv_correct.sum().item())
+        total += int(targets.shape[0])
+    robust_acc = robust_accuracy(adv_correct, total)
+    return {
+        "model": model_key,
+        "architecture": _architecture_from_key(model_key),
+        "training": _training_from_key(model_key),
+        "attack": "PGD_LINF_RESTARTS",
+        "epsilon": float(epsilon),
+        "pgd_steps": int(steps),
+        "pgd_restarts": int(restarts),
+        "pgd_alpha": float(epsilon / steps if alpha is None else alpha),
+        "pgd_random_start": True,
+        "seed": seed,
+        "evaluated_samples": total,
+        "robust_accuracy": robust_acc,
+        "attack_success_rate": untargeted_attack_success_rate(adv_correct, total),
+        "runtime_seconds": perf_counter() - start,
+        "device": str(device),
+    }
+
+
+def evaluate_all_pgd_whitebox_restarts(
+    models: dict[str, nn.Module],
+    loader: DataLoader,
+    seed: int,
+    device: torch.device,
+    epsilon: float = 0.25,
+    steps: int = 20,
+    restarts: int = 5,
+    alpha: float | None = None,
+) -> list[dict[str, Any]]:
+    """Evaluate multi-restart PGD white-box robustness for all models."""
+    rows: list[dict[str, Any]] = []
+    for model_key, model in models.items():
+        rows.append(
+            evaluate_pgd_whitebox_restarts(
+                model_key,
+                model,
+                loader,
+                seed,
+                device,
+                epsilon=epsilon,
+                steps=steps,
+                restarts=restarts,
+                alpha=alpha,
             )
         )
     return rows

@@ -122,3 +122,55 @@ def pgd_linf_attack(
             eta = torch.clamp(x_adv - x_original, min=-epsilon, max=epsilon)
             x_adv = torch.clamp(x_original + eta, clamp_min, clamp_max).detach()
     return x_adv.detach()
+
+
+def pgd_linf_attack_restarts(
+    model: nn.Module,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    epsilon: float = 0.25,
+    steps: int = 20,
+    restarts: int = 5,
+    alpha: float | None = None,
+    loss_fn: LossFn = F.cross_entropy,
+    clamp_min: float = 0.0,
+    clamp_max: float = 1.0,
+    use_eval_mode: bool = True,
+) -> torch.Tensor:
+    """Run PGD multiple times and keep the highest-loss example per sample."""
+    _validate_attack_inputs(model, x, y, epsilon)
+    if restarts <= 0:
+        raise ValueError("restarts must be positive.")
+    if epsilon == 0:
+        return x.detach().clone()
+
+    best_adv: torch.Tensor | None = None
+    best_losses: torch.Tensor | None = None
+    for _ in range(restarts):
+        x_adv = pgd_linf_attack(
+            model,
+            x,
+            y,
+            epsilon=epsilon,
+            steps=steps,
+            alpha=alpha,
+            random_start=True,
+            loss_fn=loss_fn,
+            clamp_min=clamp_min,
+            clamp_max=clamp_max,
+            use_eval_mode=use_eval_mode,
+        )
+        with _temporary_eval(model, enabled=use_eval_mode), torch.no_grad():
+            logits = model(x_adv)
+            losses = F.cross_entropy(logits, y, reduction="none")
+        if best_adv is None or best_losses is None:
+            best_adv = x_adv
+            best_losses = losses
+            continue
+        replace = losses > best_losses
+        best_losses = torch.where(replace, losses, best_losses)
+        best_adv = torch.where(replace.view(-1, *([1] * (x_adv.ndim - 1))), x_adv, best_adv)
+
+    if best_adv is None:
+        raise RuntimeError("PGD restart attack did not produce adversarial examples.")
+    return best_adv.detach()

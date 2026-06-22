@@ -1,0 +1,5 @@
+model,architecture,training,attack,epsilon,pgd_steps,pgd_restarts,robust_accuracy_mean,robust_accuracy_std,attack_success_rate_mean,attack_success_rate_std
+lenet_fgsm_at,lenet,fgsm_at,PGD_LINF_RESTARTS,0.25,20,5,0.12733333333333333,0.18764483295133208,0.8726666666666668,0.1876448329513321
+lenet_standard,lenet,standard,PGD_LINF_RESTARTS,0.25,20,5,0.005666666666666667,0.005575242894559243,0.9943333333333334,0.005575242894559296
+smallcnn_fgsm_at,smallcnn,fgsm_at,PGD_LINF_RESTARTS,0.25,20,5,0.05583333333333334,0.09670617008926231,0.9441666666666667,0.0967061700892623
+smallcnn_standard,smallcnn,standard,PGD_LINF_RESTARTS,0.25,20,5,0.004,0.003774917217635375,0.996,0.0037749172176353854

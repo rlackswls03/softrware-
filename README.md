@@ -68,6 +68,7 @@ python -m scripts.train_models --config configs/default.json
 python -m scripts.evaluate_robustness --config configs/default.json
 python -m scripts.run_transferability --config configs/default.json
 python -m scripts.evaluate_pgd --config configs/default.json
+python -m scripts.evaluate_pgd_strong --config configs/default.json --seeds 42 123 2026 --test-subset 2000 --steps 20 --restarts 5 --force
 python -m scripts.plot_results --config configs/default.json
 python -m scripts.smoke_test
 ```
@@ -83,6 +84,7 @@ python -m scripts.smoke_test
 - `results/raw/fgsm_robustness.csv`: epsilon별 FGSM white-box 평가.
 - `results/raw/transferability_long.csv`: source-target FGSM 전이성 long-form 결과.
 - `results/raw/pgd_whitebox.csv`: PGD L-infinity white-box 평가.
+- `results/raw/pgd20_restart5_whitebox.csv`: 고정 test subset 2,000개에서 수행한 PGD-20 restart 5회 white-box 평가.
 - `results/aggregated/*.csv`: 여러 seed 평균과 표준편차.
 - `results/figures/*.png`: robustness curve, epsilon별 transferability heatmap, clean/robust 비교 bar chart, clean accuracy retention, PGD white-box bar chart, 공격 예시.
 - `results/figures/figure_index.md`: 생성된 그래프를 한 번에 훑어볼 수 있는 Markdown 인덱스.

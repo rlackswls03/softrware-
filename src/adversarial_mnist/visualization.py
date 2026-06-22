@@ -243,6 +243,7 @@ def plot_pgd_whitebox_bar(
     stds = [float(stats.loc[model_key, "std"]) if not pd.isna(stats.loc[model_key, "std"]) else 0.0 for model_key in models]
     epsilon = float(pgd["epsilon"].iloc[0])
     steps = int(pgd["pgd_steps"].iloc[0])
+    restarts = int(pgd["pgd_restarts"].iloc[0]) if "pgd_restarts" in pgd.columns else 1
     x_positions = np.arange(len(models))
 
     output = Path(output_path)
@@ -274,7 +275,11 @@ def plot_pgd_whitebox_bar(
     plt.ylabel("Robust accuracy")
     upper = max(0.45, max(mean + std for mean, std in zip(means, stds, strict=True)) + 0.08)
     plt.ylim(0.0, min(1.02, upper))
-    plt.title(f"PGD White-Box Robust Accuracy (epsilon={epsilon:g}, steps={steps})")
+    title = f"PGD White-Box Robust Accuracy (epsilon={epsilon:g}, steps={steps}"
+    if restarts > 1:
+        title += f", restarts={restarts}"
+    title += ")"
+    plt.title(title)
     plt.xticks(x_positions, models, rotation=25, ha="right")
     plt.grid(axis="y", alpha=0.3)
     plt.legend(ncol=2)
@@ -355,6 +360,9 @@ def plot_all_results(config: dict[str, Any]) -> None:
         figures_dir / "clean_accuracy_retention.png",
     )
     plot_pgd_whitebox_bar(raw_dir / "pgd_whitebox.csv", figures_dir / "pgd_whitebox.png")
+    strong_pgd_csv = raw_dir / "pgd20_restart5_whitebox.csv"
+    if strong_pgd_csv.exists():
+        plot_pgd_whitebox_bar(strong_pgd_csv, figures_dir / "pgd20_restart5_whitebox.png")
     plot_adversarial_examples(
         raw_dir / "adversarial_examples.pt",
         figures_dir / "adversarial_examples.png",
@@ -522,6 +530,7 @@ def generate_figures_index(figures_dir: str | Path, output_path: str | Path) -> 
         "clean_robust_comparison.png": "clean accuracy와 epsilon=0.25 FGSM robust accuracy 비교",
         "clean_accuracy_retention.png": "FGSM adversarial training 모델의 clean accuracy retention",
         "pgd_whitebox.png": "PGD L-infinity white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시",
+        "pgd20_restart5_whitebox.png": "PGD-20 restart 5회 white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시",
         "adversarial_examples.png": "원본, FGSM, PGD 이미지 예시",
     }
     lines = ["# Figure Index", ""]
