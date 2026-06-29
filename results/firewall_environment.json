@@ -1,0 +1,20 @@
+{
+  "created_at_utc": "2026-06-29T21:47:15.767343+00:00",
+  "cuda_available": false,
+  "cuda_devices": [],
+  "device": "cpu",
+  "git_commit": "9f3b64273e19ceb38da9e5bc2f5f6874c7c14363",
+  "machine": "AMD64",
+  "matplotlib": "3.11.0",
+  "mps_available": false,
+  "numpy": "2.4.6",
+  "pandas": "3.0.3",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+  "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+  "python_executable": "D:\\75.4.\uae40\ucc2c\uc9c4.4\ud559\ub144\\1\ud559\uae30\\\uc18c\ud504\ud2b8\uc6e8\uc5b4 \uc751\uc6a9\\FGSM\\softrware-\\.venv\\Scripts\\python.exe",
+  "release": "11",
+  "system": "Windows",
+  "torch": "2.12.1+cpu",
+  "torchvision": "0.27.1"
+}

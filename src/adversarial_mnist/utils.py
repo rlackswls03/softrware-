@@ -73,7 +73,7 @@ def apply_quick_overrides(config: dict[str, Any]) -> dict[str, Any]:
     config["quick"]["enabled"] = True
     if "seeds" in quick:
         config["seeds"] = quick["seeds"]
-    for section in ("dataset", "training", "evaluation"):
+    for section in ("dataset", "training", "evaluation", "firewall"):
         overrides = quick.get(section)
         if isinstance(overrides, Mapping):
             deep_update(config[section], overrides)

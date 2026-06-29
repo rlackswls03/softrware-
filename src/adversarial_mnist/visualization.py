@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import torch
 
+from adversarial_mnist.firewall import binary_roc_curve
 from adversarial_mnist.metrics import clean_accuracy_retention
 from adversarial_mnist.models import MODEL_ORDER
 from adversarial_mnist.utils import ensure_dir
@@ -338,6 +339,392 @@ def plot_adversarial_examples(
     plt.close()
 
 
+def plot_firewall_score_distribution(
+    scores_csv: str | Path,
+    output_path: str | Path,
+) -> None:
+    """Plot reconstruction-error score distributions by model and input condition."""
+    source = _require_file(scores_csv)
+    scores = pd.read_csv(source)
+    _require_columns(scores, {"model", "condition", "reconstruction_error"}, source)
+    output = Path(output_path)
+    ensure_dir(output.parent)
+
+    groups: list[pd.Series] = []
+    labels: list[str] = []
+    for model_key in sorted(scores["model"].unique()):
+        for condition in ("Clean", "FGSM", "PGD"):
+            group = scores[
+                (scores["model"] == model_key) & (scores["condition"] == condition)
+            ]["reconstruction_error"]
+            if not group.empty:
+                groups.append(group)
+                labels.append(f"{model_key}\n{condition}")
+
+    plt.figure(figsize=(max(9, len(labels) * 1.1), 6))
+    plt.boxplot(groups, tick_labels=labels, showfliers=False)
+    plt.ylabel("Reconstruction error (MSE)")
+    plt.title("Adversarial Firewall Detector Score Distribution")
+    plt.xticks(rotation=25, ha="right")
+    plt.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    plt.close()
+
+
+def plot_firewall_accuracy_recovery(
+    results_csv: str | Path,
+    output_path: str | Path,
+) -> None:
+    """Plot pre-purification, purified, and final safe accuracy."""
+    source = _require_file(results_csv)
+    results = pd.read_csv(source)
+    _require_columns(
+        results,
+        {"model", "condition", "original_accuracy", "purified_accuracy", "final_safe_accuracy"},
+        source,
+    )
+    metrics = [
+        ("original_accuracy", "Original input"),
+        ("purified_accuracy", "Purified input"),
+        ("final_safe_accuracy", "Final safe"),
+    ]
+    summary = (
+        results.groupby(["model", "condition"])[[metric for metric, _ in metrics]]
+        .mean()
+        .reset_index()
+    )
+    labels: list[str] = []
+    for model_key in sorted(summary["model"].unique()):
+        for condition in ("Clean", "FGSM", "PGD"):
+            if not summary[(summary["model"] == model_key) & (summary["condition"] == condition)].empty:
+                labels.append(f"{model_key}\n{condition}")
+    x_positions = np.arange(len(labels))
+    width = 0.25
+    output = Path(output_path)
+    ensure_dir(output.parent)
+
+    plt.figure(figsize=(max(10, len(labels) * 1.05), 6))
+    for offset_index, (metric, label) in enumerate(metrics):
+        values: list[float] = []
+        for combined_label in labels:
+            model_key, condition = combined_label.split("\n", maxsplit=1)
+            row = summary[(summary["model"] == model_key) & (summary["condition"] == condition)]
+            values.append(float(row[metric].iloc[0]) if not row.empty else math.nan)
+        plt.bar(x_positions + (offset_index - 1) * width, values, width, label=label)
+    plt.ylabel("Accuracy / safe outcome rate")
+    plt.ylim(0.0, 1.02)
+    plt.title("Adversarial Firewall Accuracy Recovery")
+    plt.xticks(x_positions, labels, rotation=25, ha="right")
+    plt.grid(axis="y", alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    plt.close()
+
+
+def plot_firewall_decision_breakdown(
+    results_csv: str | Path,
+    output_path: str | Path,
+) -> None:
+    """Plot accept/purify/reject decision proportions."""
+    source = _require_file(results_csv)
+    results = pd.read_csv(source)
+    decision_columns = {
+        "accept_original_rate",
+        "accept_purified_rate",
+        "reject_suspicious_rate",
+    }
+    _require_columns(results, {"model", "condition", *decision_columns}, source)
+    summary = results.groupby(["model", "condition"])[list(decision_columns)].mean().reset_index()
+    labels: list[str] = []
+    for model_key in sorted(summary["model"].unique()):
+        for condition in ("Clean", "FGSM", "PGD"):
+            if not summary[(summary["model"] == model_key) & (summary["condition"] == condition)].empty:
+                labels.append(f"{model_key}\n{condition}")
+
+    x_positions = np.arange(len(labels))
+    bottoms = np.zeros(len(labels))
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    plt.figure(figsize=(max(10, len(labels) * 1.05), 6))
+    for column, label, color in [
+        ("accept_original_rate", "Accept original", "#4c78a8"),
+        ("accept_purified_rate", "Accept purified", "#59a14f"),
+        ("reject_suspicious_rate", "Reject suspicious", "#e45756"),
+    ]:
+        values: list[float] = []
+        for combined_label in labels:
+            model_key, condition = combined_label.split("\n", maxsplit=1)
+            row = summary[(summary["model"] == model_key) & (summary["condition"] == condition)]
+            values.append(float(row[column].iloc[0]) if not row.empty else 0.0)
+        plt.bar(x_positions, values, bottom=bottoms, label=label, color=color)
+        bottoms += np.asarray(values)
+    plt.ylabel("Decision proportion")
+    plt.ylim(0.0, 1.02)
+    plt.title("Adversarial Firewall Decision Breakdown")
+    plt.xticks(x_positions, labels, rotation=25, ha="right")
+    plt.grid(axis="y", alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    plt.close()
+
+
+def plot_firewall_roc_curve(
+    scores_csv: str | Path,
+    output_path: str | Path,
+) -> None:
+    """Plot ROC curves for reconstruction-error attack detection."""
+    source = _require_file(scores_csv)
+    scores = pd.read_csv(source)
+    _require_columns(scores, {"model", "condition", "reconstruction_error", "is_attack"}, source)
+    output = Path(output_path)
+    ensure_dir(output.parent)
+
+    plt.figure(figsize=(8, 6))
+    for model_key in sorted(scores["model"].unique()):
+        model_scores = scores[scores["model"] == model_key]
+        clean = model_scores[model_scores["condition"] == "Clean"]
+        attacks = model_scores[model_scores["condition"].isin(["FGSM", "PGD"])]
+        if clean.empty or attacks.empty:
+            continue
+        combined = pd.concat([clean, attacks], ignore_index=True)
+        fpr, tpr, _ = binary_roc_curve(
+            combined["reconstruction_error"].astype(float).to_numpy(),
+            combined["is_attack"].astype(int).to_numpy(),
+        )
+        plt.plot(fpr, tpr, label=model_key)
+    plt.plot([0, 1], [0, 1], linestyle="--", color="#555555", linewidth=1)
+    plt.xlabel("False positive rate")
+    plt.ylabel("True positive rate")
+    plt.title("Adversarial Firewall Detection ROC")
+    plt.grid(alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    plt.close()
+
+
+def plot_firewall_examples(
+    examples_path: str | Path,
+    output_path: str | Path,
+) -> None:
+    """Plot original, attacked/input, and purified firewall examples."""
+    source = _require_file(examples_path)
+    examples = torch.load(source, map_location="cpu")
+    conditions = examples.get("conditions", {})
+    if not isinstance(conditions, dict) or not conditions:
+        raise ValueError(f"{source} does not contain firewall example conditions.")
+
+    row_specs: list[tuple[str, str, dict[str, Any]]] = []
+    for condition in ("Clean", "FGSM", "PGD"):
+        condition_examples = conditions.get(condition)
+        if not condition_examples:
+            continue
+        row_specs.extend(
+            [
+                (condition, "Original", condition_examples),
+                (condition, "Input", condition_examples),
+                (condition, "Purified", condition_examples),
+            ]
+        )
+    first = next(iter(conditions.values()))
+    columns = min(6, int(first["labels"].shape[0]))
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    plt.figure(figsize=(columns * 2.0, max(6, len(row_specs) * 1.45)))
+    for row_index, (condition, row_name, payload) in enumerate(row_specs):
+        tensor_key = "original" if row_name == "Original" else "input" if row_name == "Input" else "purified"
+        tensor = payload[tensor_key]
+        labels = payload["labels"]
+        for column_index in range(columns):
+            axis = plt.subplot(len(row_specs), columns, row_index * columns + column_index + 1)
+            axis.imshow(tensor[column_index, 0].numpy(), cmap="gray", vmin=0.0, vmax=1.0)
+            axis.axis("off")
+            if row_index == 0:
+                axis.set_title(f"y={int(labels[column_index])}", fontsize=8)
+            if column_index == 0:
+                axis.set_ylabel(f"{condition}\n{row_name}", fontsize=9)
+            if row_name == "Input":
+                axis.text(
+                    0.5,
+                    -0.08,
+                    f"in={int(payload['input_predictions'][column_index])}",
+                    transform=axis.transAxes,
+                    ha="center",
+                    va="top",
+                    fontsize=7,
+                )
+            elif row_name == "Purified":
+                score = float(payload["scores"][column_index])
+                decision = str(payload["decisions"][column_index]).replace("_", "\n")
+                axis.text(
+                    0.5,
+                    -0.08,
+                    f"pur={int(payload['purified_predictions'][column_index])}\nscore={score:.4f}\n{decision}",
+                    transform=axis.transAxes,
+                    ha="center",
+                    va="top",
+                    fontsize=6,
+                )
+    plt.suptitle(
+        f"Adversarial Firewall examples ({examples.get('model')}, seed={examples.get('seed')})"
+    )
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    plt.close()
+
+
+def plot_firewall_results(config: dict[str, Any]) -> None:
+    """Create all Firewall figures from saved result artifacts."""
+    raw_dir = Path(config["paths"]["raw_dir"])
+    figures_dir = ensure_dir(config["paths"]["figures_dir"])
+    plot_firewall_score_distribution(
+        raw_dir / "firewall_detection_scores.csv",
+        figures_dir / "firewall_score_distribution.png",
+    )
+    plot_firewall_accuracy_recovery(
+        raw_dir / "firewall_results.csv",
+        figures_dir / "firewall_accuracy_recovery.png",
+    )
+    plot_firewall_decision_breakdown(
+        raw_dir / "firewall_results.csv",
+        figures_dir / "firewall_decision_breakdown.png",
+    )
+    plot_firewall_roc_curve(
+        raw_dir / "firewall_detection_scores.csv",
+        figures_dir / "firewall_detection_roc_curve.png",
+    )
+    plot_firewall_examples(
+        raw_dir / "firewall_examples.pt",
+        figures_dir / "original_attacked_purified_examples.png",
+    )
+    generate_figures_index(figures_dir, figures_dir / "figure_index.md")
+
+
+def update_firewall_summary_markdown(config: dict[str, Any], output_path: str | Path) -> None:
+    """Append or replace the Firewall section in ``results/summary.md``."""
+    raw_dir = Path(config["paths"]["raw_dir"])
+    aggregated_dir = Path(config["paths"]["aggregated_dir"])
+    results_file = _require_file(raw_dir / "firewall_results.csv")
+    detection_file = _require_file(aggregated_dir / "firewall_detection_summary.csv")
+    results = pd.read_csv(results_file)
+    detection = pd.read_csv(detection_file)
+    _require_columns(
+        results,
+        {
+            "model",
+            "condition",
+            "original_accuracy",
+            "purified_accuracy",
+            "detection_rate",
+            "reject_rate",
+            "accepted_accuracy",
+            "final_safe_accuracy",
+        },
+        results_file,
+    )
+    _require_columns(detection, {"model", "attack_condition", "auc", "tpr_at_fpr_5"}, detection_file)
+
+    output = Path(output_path)
+    base = output.read_text(encoding="utf-8") if output.exists() else "# Experiment Summary\n"
+    marker = "## Adversarial Firewall"
+    if marker in base:
+        base = base.split(marker, maxsplit=1)[0].rstrip() + "\n"
+
+    result_means = (
+        results.groupby(["model", "condition"])[
+            [
+                "original_accuracy",
+                "purified_accuracy",
+                "detection_rate",
+                "reject_rate",
+                "accepted_accuracy",
+                "final_safe_accuracy",
+            ]
+        ]
+        .mean()
+        .reset_index()
+    )
+    detection_means = (
+        detection.groupby(["model", "attack_condition"])[["auc", "tpr_at_fpr_5"]]
+        .mean()
+        .reset_index()
+    )
+
+    lines = [
+        "",
+        marker,
+        "",
+        "### Overview",
+        "",
+        "This section extends the original FGSM/PGD robustness study into an input-stage defense pipeline. The Firewall uses a convolutional autoencoder as a purifier, reconstruction error as an adversarial-input detector, and a reject option for suspicious low-confidence purified predictions.",
+        "",
+    ]
+    if config.get("quick", {}).get("enabled"):
+        lines.extend(
+            [
+                "> WARNING: Firewall quick mode result. This run checks pipeline connectivity only; do not use it as a performance conclusion.",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "### Detection Performance",
+            "",
+            "| Model | Attack condition | AUC | TPR at FPR 5% |",
+            "|---|---|---:|---:|",
+        ]
+    )
+    for _, row in detection_means.iterrows():
+        lines.append(
+            f"| {row['model']} | {row['attack_condition']} | "
+            f"{float(row['auc']):.3f} | {float(row['tpr_at_fpr_5']) * 100:.2f}% |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "### Purification and Reject Option",
+            "",
+            "| Model | Condition | Original accuracy | Purified accuracy | Detection rate | Reject rate | Accepted accuracy | Final safe accuracy |",
+            "|---|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for _, row in result_means.iterrows():
+        lines.append(
+            f"| {row['model']} | {row['condition']} | "
+            f"{_format_percent(float(row['original_accuracy']))} | "
+            f"{_format_percent(float(row['purified_accuracy']))} | "
+            f"{_format_percent(float(row['detection_rate']))} | "
+            f"{_format_percent(float(row['reject_rate']))} | "
+            f"{_format_percent(float(row['accepted_accuracy']))} | "
+            f"{_format_percent(float(row['final_safe_accuracy']))} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "### Interpretation",
+            "",
+            "- `Original accuracy` is the classifier accuracy before purification on the current input condition.",
+            "- `Purified accuracy` is the classifier accuracy after autoencoder reconstruction.",
+            "- `Final safe accuracy` counts correct accepted predictions, and for adversarial inputs also counts rejected samples as safe outcomes because the system avoided an autonomous wrong decision.",
+            "- Clean false positives appear as clean detection and reject rates, so they should remain low.",
+            "",
+            "### Limitations",
+            "",
+            "- This is a prototype defense and not guaranteed against adaptive attacks.",
+            "- Reconstruction-error detection can be bypassed by attacks optimized against the autoencoder and classifier jointly.",
+            "- MNIST results should not be interpreted as direct evidence for real military imagery.",
+        ]
+    )
+    ensure_dir(output.parent)
+    output.write_text(base.rstrip() + "\n" + "\n".join(lines) + "\n", encoding="utf-8")
+
+
 def plot_all_results(config: dict[str, Any]) -> None:
     """Create all figures from saved result artifacts."""
     raw_dir = Path(config["paths"]["raw_dir"])
@@ -532,6 +919,11 @@ def generate_figures_index(figures_dir: str | Path, output_path: str | Path) -> 
         "pgd_whitebox.png": "PGD L-infinity white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시",
         "pgd20_restart5_whitebox.png": "PGD-20 restart 5회 white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시",
         "adversarial_examples.png": "원본, FGSM, PGD 이미지 예시",
+        "firewall_score_distribution.png": "Adversarial Firewall reconstruction error 점수 분포",
+        "firewall_accuracy_recovery.png": "Firewall 적용 전, 정화 후, 최종 safe accuracy 비교",
+        "firewall_decision_breakdown.png": "원본 통과, 정화 후 통과, 의심 입력 거부 비율",
+        "firewall_detection_roc_curve.png": "reconstruction error 기반 적대적 입력 탐지 ROC curve",
+        "original_attacked_purified_examples.png": "원본, 공격/입력, autoencoder 정화 이미지 예시",
     }
     lines = ["# Figure Index", ""]
     for figure in sorted(figures_path.glob("*.png")):

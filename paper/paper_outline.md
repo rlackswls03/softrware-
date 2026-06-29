@@ -40,6 +40,20 @@
 - 최종 모델: `lenet_standard`, `smallcnn_standard`, `lenet_fgsm_at`, `smallcnn_fgsm_at`.
 - 공격: FGSM, PGD L-infinity.
 
+### Part 2: Adversarial Firewall 확장
+
+- 기존 FGSM/PGD/전이성 결과는 모델 자체 방어의 한계를 보이는 Part 1로 둔다.
+- Part 2에서는 `smallcnn_standard`와 `smallcnn_fgsm_at`을 대상으로 입력 단계 방어 파이프라인을 구현한다.
+- 제안 구조:
+  - convolutional autoencoder purifier/reformer.
+  - reconstruction error 기반 adversarial input detector.
+  - 정화 후 재분류.
+  - `ACCEPT_ORIGINAL`, `ACCEPT_PURIFIED`, `REJECT_SUSPICIOUS` reject option policy.
+- 핵심 연구 질문:
+  - FGSM adversarial training이 PGD에서 일반화되지 않는 조건에서, 입력 탐지·정화·거부 정책이 오분류 위험을 얼마나 줄일 수 있는가?
+  - clean 입력의 오탐률을 제한하면서 공격 입력을 탐지할 수 있는가?
+  - autoencoder 정화가 FGSM/PGD 입력에서 분류 정확도를 회복시키는가?
+
 ## 5. 실험 환경
 
 | 항목 | 값 |
@@ -89,6 +103,8 @@
 - 동일 방어가 전이 공격에도 유지되는지 source-target 방향성을 구분해 해석한다.
 - FGSM 적대적 훈련이 PGD에도 일반화되는지 추가 검증한다.
 - 정상 정확도와 강건 정확도의 trade-off를 정량화한다.
+- Adversarial Firewall 결과에서는 단순 정화 성능뿐 아니라 탐지율, 오탐률, 거부율, final safe accuracy를 함께 해석한다.
+- autoencoder purifier가 PGD 정확도를 완전히 회복하지 못하더라도, reject option이 고위험 입력의 무리한 자동 판단을 줄이는지 분석한다.
 
 ## 10. 군 적용 시사점
 
@@ -100,7 +116,9 @@
 
 - MNIST는 실제 시각 인식 환경보다 단순하다.
 - FGSM와 PGD만 사용한다.
-- 탐지, 정화, 물리 패치, 객체탐지는 다루지 않는다.
+- Adversarial Firewall은 adaptive attack에 대한 보장을 제공하지 않는 prototype이다.
+- reconstruction error detector와 autoencoder purifier는 공격자가 방어 구조를 알고 최적화하는 경우 우회될 수 있다.
+- 물리 패치, 직접 촬영 데이터, 객체탐지는 다루지 않는다.
 - quick 모드 결과는 성능 결론에 사용할 수 없다.
 
 ## 12. 향후 연구

@@ -96,6 +96,67 @@ python -m scripts.smoke_test
 python -m scripts.plot_results --config configs/default.json
 ```
 
+## 9-1. Adversarial Firewall 확장
+
+기존 FGSM/PGD/전이성 분석은 Part 1로 유지한다. Part 2에서는 `smallcnn_standard`와
+`smallcnn_fgsm_at`을 대상으로 **Adversarial Firewall: 적대적 입력 탐지·정화·거부 기반 방어 파이프라인**을 추가했다.
+
+이 확장의 목적은 새로운 공격을 더 붙이는 것이 아니라, FGSM adversarial training이 PGD에서 무너진 조건을 바탕으로 입력 단계 방어를 구현하는 것이다.
+
+Firewall 흐름:
+
+```text
+input image
+-> classifier prediction
+-> convolutional autoencoder purification
+-> reconstruction error detection
+-> accept original / accept purified / reject suspicious
+```
+
+Quick 검증:
+
+```bash
+python -m scripts.run_firewall_pipeline --quick --force
+```
+
+Firewall quick 모드는 test subset 1,000개, PGD 3 step, autoencoder 10 epoch를 사용한다. 성능 결론이 아니라 탐지·정화·거부 파이프라인과 시각화 산출물 연결 검증용이다.
+
+기존 full checkpoint를 사용한 seed 42 평가:
+
+```bash
+python -m scripts.run_firewall_pipeline --force --seeds 42
+```
+
+CPU 환경에서 full test 10,000개와 PGD 10 step 평가는 오래 걸릴 수 있다. 중간 규모 검증은 다음처럼 줄여서 실행할 수 있다.
+
+```bash
+python -m scripts.run_firewall_pipeline --force --seeds 42 --test-subset 2000 --pgd-steps 3
+```
+
+개별 실행:
+
+```bash
+python -m scripts.train_autoencoder --config configs/default.json --seeds 42 --force
+python -m scripts.evaluate_firewall --config configs/default.json --seeds 42 --force
+python -m scripts.plot_firewall_results --config configs/default.json
+```
+
+Firewall 결과 파일:
+
+- `checkpoints/autoencoder_seed{seed}.pt`: clean MNIST로 학습한 autoencoder purifier.
+- `results/raw/autoencoder_history.csv`: autoencoder train/validation reconstruction loss.
+- `results/raw/firewall_detection_scores.csv`: 샘플별 reconstruction error, threshold, decision, prediction.
+- `results/raw/firewall_results.csv`: 조건별 original/purified/final safe accuracy, detection rate, reject rate.
+- `results/aggregated/firewall_detection_summary.csv`: detector AUC와 TPR@FPR 5%.
+- `results/aggregated/firewall_results_summary.csv`: 여러 seed 평균/표준편차용 요약.
+- `results/figures/firewall_score_distribution.png`: clean/FGSM/PGD reconstruction error 분포.
+- `results/figures/firewall_detection_roc_curve.png`: reconstruction error detector ROC curve.
+- `results/figures/firewall_accuracy_recovery.png`: 정화 전후 및 최종 safe accuracy 비교.
+- `results/figures/firewall_decision_breakdown.png`: 원본 통과/정화 후 통과/거부 비율.
+- `results/figures/original_attacked_purified_examples.png`: 원본, 공격 입력, 정화 이미지 예시.
+
+주의: 이 방어는 adaptive attack에 대한 보장을 제공하지 않는 prototype이다. quick 결과는 연결 검증용이며 성능 결론으로 사용하면 안 된다.
+
 ## 10. 지표 정의
 
 - Clean accuracy: 공격 없는 테스트 정확도.

@@ -1,0 +1,7 @@
+model,seed,attack_condition,auc,tpr_at_fpr_5,clean_samples,attack_samples
+smallcnn_standard,42,FGSM,0.99988,1.0,1000,1000
+smallcnn_standard,42,PGD,0.999124,1.0,1000,1000
+smallcnn_standard,42,ALL_ATTACKS,0.999502,1.0,1000,2000
+smallcnn_fgsm_at,42,FGSM,0.9998859999999999,1.0,1000,1000
+smallcnn_fgsm_at,42,PGD,0.997812,0.996,1000,1000
+smallcnn_fgsm_at,42,ALL_ATTACKS,0.998849,0.998,1000,2000

@@ -40,3 +40,46 @@
 - The 90% value is a reference target from 군 적용 참고 자료에서 제시한 작전운용성능 참고 목표치 90%, not a universal criterion.
 - Test data is used only for final evaluation.
 - NaN conditional transfer values indicate zero jointly clean-correct denominator.
+
+## Adversarial Firewall
+
+### Overview
+
+This section extends the original FGSM/PGD robustness study into an input-stage defense pipeline. The Firewall uses a convolutional autoencoder as a purifier, reconstruction error as an adversarial-input detector, and a reject option for suspicious low-confidence purified predictions.
+
+> WARNING: Firewall quick mode result. This run checks pipeline connectivity only; do not use it as a performance conclusion.
+
+### Detection Performance
+
+| Model | Attack condition | AUC | TPR at FPR 5% |
+|---|---|---:|---:|
+| smallcnn_fgsm_at | ALL_ATTACKS | 0.999 | 99.80% |
+| smallcnn_fgsm_at | FGSM | 1.000 | 100.00% |
+| smallcnn_fgsm_at | PGD | 0.998 | 99.60% |
+| smallcnn_standard | ALL_ATTACKS | 1.000 | 100.00% |
+| smallcnn_standard | FGSM | 1.000 | 100.00% |
+| smallcnn_standard | PGD | 0.999 | 100.00% |
+
+### Purification and Reject Option
+
+| Model | Condition | Original accuracy | Purified accuracy | Detection rate | Reject rate | Accepted accuracy | Final safe accuracy |
+|---|---|---:|---:|---:|---:|---:|---:|
+| smallcnn_fgsm_at | Clean | 99.90% | 92.10% | 3.60% | 0.30% | 99.60% | 99.30% |
+| smallcnn_fgsm_at | FGSM | 96.70% | 85.30% | 100.00% | 15.00% | 90.94% | 92.30% |
+| smallcnn_fgsm_at | PGD | 52.50% | 81.40% | 99.50% | 17.30% | 88.15% | 90.20% |
+| smallcnn_standard | Clean | 99.50% | 92.10% | 3.60% | 0.10% | 99.40% | 99.30% |
+| smallcnn_standard | FGSM | 22.60% | 66.30% | 100.00% | 33.00% | 81.49% | 87.60% |
+| smallcnn_standard | PGD | 3.60% | 73.30% | 100.00% | 26.80% | 85.66% | 89.50% |
+
+### Interpretation
+
+- `Original accuracy` is the classifier accuracy before purification on the current input condition.
+- `Purified accuracy` is the classifier accuracy after autoencoder reconstruction.
+- `Final safe accuracy` counts correct accepted predictions, and for adversarial inputs also counts rejected samples as safe outcomes because the system avoided an autonomous wrong decision.
+- Clean false positives appear as clean detection and reject rates, so they should remain low.
+
+### Limitations
+
+- This is a prototype defense and not guaranteed against adaptive attacks.
+- Reconstruction-error detection can be bypassed by attacks optimized against the autoencoder and classifier jointly.
+- MNIST results should not be interpreted as direct evidence for real military imagery.

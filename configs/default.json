@@ -44,6 +44,24 @@
       "random_start": true
     }
   },
+  "firewall": {
+    "models": ["smallcnn_standard", "smallcnn_fgsm_at"],
+    "autoencoder": {
+      "epochs": 5,
+      "learning_rate": 0.001
+    },
+    "detector": {
+      "threshold_fpr": 0.05,
+      "min_confidence": 0.7
+    },
+    "attacks": {
+      "epsilon": 0.25,
+      "pgd_steps": 10,
+      "pgd_alpha": null,
+      "pgd_random_start": true
+    },
+    "max_example_images": 8
+  },
   "adversarial_training": {
     "alpha": 0.5
   },
@@ -75,6 +93,15 @@
         "alpha": null,
         "random_start": true
       }
+    },
+    "firewall": {
+      "autoencoder": {
+        "epochs": 10
+      },
+      "attacks": {
+        "pgd_steps": 3
+      },
+      "max_example_images": 6
     }
   }
 }
