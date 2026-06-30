@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adversarial MNIST Visual Report</title>
+  <style>
+    :root {
+      --ink: #1e2329;
+      --muted: #5b6470;
+      --line: #d9dee7;
+      --panel: #ffffff;
+      --bg: #f4f6f8;
+      --blue: #315f92;
+      --green: #3d7c5f;
+      --red: #a44545;
+      --amber: #9b6b21;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, "Malgun Gothic", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.55;
+    }
+    header {
+      padding: 28px 34px 18px;
+      background: #111827;
+      color: white;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 46px);
+      letter-spacing: 0;
+    }
+    header p {
+      max-width: 980px;
+      margin: 0;
+      color: #d1d5db;
+      font-size: 16px;
+    }
+    main { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    section {
+      margin: 0 0 22px;
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    h2 { margin: 0 0 14px; font-size: 24px; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      padding: 14px;
+      border-radius: 6px;
+      background: #fbfcfe;
+    }
+    .metric strong { display: block; font-size: 28px; }
+    .metric span { color: var(--muted); font-size: 13px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 18px;
+    }
+    .figure-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+    }
+    .figure-card h3 { margin: 0 0 10px; font-size: 18px; }
+    .figure-card img {
+      width: 100%;
+      height: auto;
+      border: 1px solid #edf0f4;
+      border-radius: 6px;
+      background: white;
+    }
+    .figure-card p { margin: 9px 0 0; color: var(--muted); font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { background: #f0f3f7; }
+    .note { color: var(--muted); }
+    .links a {
+      display: inline-block;
+      margin: 4px 10px 4px 0;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Adversarial MNIST Visual Report</h1>
+    <p>이미 학습된 checkpoint와 저장된 CSV/PNG를 사용해, FGSM 방어의 한계와 Adversarial Firewall 확장을 발표용 흐름으로 재구성한 정적 보고서입니다.</p>
+  </header>
+  <main>
+    <section>
+      <h2>핵심 숫자</h2>
+      <div class="metrics">
+        <div class="metric"><span>SmallCNN FGSM-AT clean accuracy</span><strong>99.19%</strong></div>
+        <div class="metric"><span>SmallCNN FGSM-AT FGSM eps=0.25</span><strong>96.65%</strong></div>
+        <div class="metric"><span>SmallCNN FGSM-AT PGD eps=0.25</span><strong>10.07%</strong></div>
+        <div class="metric"><span>Firewall PGD final safe accuracy</span><strong>88.62%</strong></div>
+      </div>
+      <p class="note">Firewall 값은 seed 42 full test set 기준입니다. 기존 FGSM/PGD/전이성 실험은 여러 seed 결과를 포함합니다.</p>
+    </section>
+
+    <section>
+      <h2>시각 스토리보드</h2>
+      <div class="grid">
+        
+        <article class="figure-card">
+          <h3>Project Flow</h3>
+          <img src="../figures/project_pipeline_flow.png" alt="Project Flow">
+          <p>The whole story: train models, attack them, diagnose limits, then add Firewall defense.</p>
+        </article>
+    
+        <article class="figure-card">
+          <h3>Training Progress</h3>
+          <img src="../figures/training_progress.png" alt="Training Progress">
+          <p>Validation accuracy and training loss from the previously trained CNN checkpoints.</p>
+        </article>
+    
+        <article class="figure-card">
+          <h3>Core Result Storyboard</h3>
+          <img src="../figures/result_storyboard.png" alt="Core Result Storyboard">
+          <p>One slide that connects FGSM robustness, PGD collapse, and Firewall final safe accuracy.</p>
+        </article>
+    
+        <article class="figure-card">
+          <h3>Adversarial Examples</h3>
+          <img src="../figures/adversarial_examples.png" alt="Adversarial Examples">
+          <p>Original, FGSM, and PGD examples used in the robustness study.</p>
+        </article>
+    
+        <article class="figure-card">
+          <h3>Firewall Image Flow</h3>
+          <img src="../figures/original_attacked_purified_examples.png" alt="Firewall Image Flow">
+          <p>Original, attacked/input, and autoencoder-purified images with predictions and decisions.</p>
+        </article>
+    
+        <article class="figure-card">
+          <h3>Firewall Detection Scores</h3>
+          <img src="../figures/firewall_score_distribution.png" alt="Firewall Detection Scores">
+          <p>Reconstruction-error distributions for clean, FGSM, and PGD inputs.</p>
+        </article>
+    
+        <article class="figure-card">
+          <h3>Firewall Decisions</h3>
+          <img src="../figures/firewall_decision_breakdown.png" alt="Firewall Decisions">
+          <p>How often the system accepted original inputs, accepted purified inputs, or rejected suspicious inputs.</p>
+        </article>
+    
+        <article class="figure-card">
+          <h3>Strong PGD Check</h3>
+          <img src="../figures/pgd20_restart5_whitebox.png" alt="Strong PGD Check">
+          <p>PGD-20 with five restarts shows seed instability and limits of FGSM-only robustness.</p>
+        </article>
+    
+      </div>
+    </section>
+
+    <section>
+      <h2>사용한 학습 산출물</h2>
+      <p>현재 checkpoint 파일 25개를 기준으로 보고서를 생성했습니다.</p>
+      <table><thead><tr><th>Checkpoint</th><th>Size</th></tr></thead><tbody><tr><td>autoencoder_seed42.pt</td><td>0.51 MB</td></tr><tr><td>lenet_fgsm_at_seed123_best_val.pt</td><td>0.72 MB</td></tr><tr><td>lenet_fgsm_at_seed123_last.pt</td><td>0.72 MB</td></tr><tr><td>lenet_fgsm_at_seed2026_best_val.pt</td><td>0.72 MB</td></tr><tr><td>lenet_fgsm_at_seed2026_last.pt</td><td>0.72 MB</td></tr><tr><td>lenet_fgsm_at_seed42_best_val.pt</td><td>0.72 MB</td></tr><tr><td>lenet_fgsm_at_seed42_last.pt</td><td>0.72 MB</td></tr><tr><td>lenet_standard_seed123_best_val.pt</td><td>0.72 MB</td></tr><tr><td>lenet_standard_seed123_last.pt</td><td>0.72 MB</td></tr><tr><td>lenet_standard_seed2026_best_val.pt</td><td>0.72 MB</td></tr><tr><td>lenet_standard_seed2026_last.pt</td><td>0.72 MB</td></tr><tr><td>lenet_standard_seed42_best_val.pt</td><td>0.72 MB</td></tr><tr><td>lenet_standard_seed42_last.pt</td><td>0.72 MB</td></tr><tr><td>smallcnn_fgsm_at_seed123_best_val.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_fgsm_at_seed123_last.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_fgsm_at_seed2026_best_val.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_fgsm_at_seed2026_last.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_fgsm_at_seed42_best_val.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_fgsm_at_seed42_last.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_standard_seed123_best_val.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_standard_seed123_last.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_standard_seed2026_best_val.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_standard_seed2026_last.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_standard_seed42_best_val.pt</td><td>5.38 MB</td></tr><tr><td>smallcnn_standard_seed42_last.pt</td><td>5.38 MB</td></tr></tbody></table>
+    </section>
+
+    <section>
+      <h2>관련 파일</h2>
+      <div class="links">
+        <a href="../simulation/index.html">interactive simulation</a>
+        <a href="../summary.md">results/summary.md</a>
+        <a href="../../업데이트.md">업데이트.md</a>
+        <a href="../figures/figure_index.md">figure_index.md</a>
+        <a href="../raw/firewall_results.csv">firewall_results.csv</a>
+        <a href="../raw/fgsm_robustness.csv">fgsm_robustness.csv</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

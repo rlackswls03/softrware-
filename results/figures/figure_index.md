@@ -6,6 +6,12 @@
 
 ![](adversarial_examples.png)
 
+## autoencoder_training_progress.png
+
+Adversarial Firewall autoencoder purifier의 reconstruction loss 변화
+
+![](autoencoder_training_progress.png)
+
 ## clean_accuracy_retention.png
 
 FGSM adversarial training 모델의 clean accuracy retention
@@ -60,11 +66,29 @@ PGD L-infinity white-box robust accuracy 비교. 평균, 표준편차, seed별 �
 
 ![](pgd_whitebox.png)
 
+## project_pipeline_flow.png
+
+전체 프로젝트 흐름: 모델 학습, 공격 평가, 한계 진단, Firewall 확장
+
+![](project_pipeline_flow.png)
+
+## result_storyboard.png
+
+FGSM 강건성, PGD 취약성, Firewall final safe accuracy를 한 장에 요약한 결과 스토리보드
+
+![](result_storyboard.png)
+
 ## robustness_curve.png
 
 FGSM epsilon별 robust accuracy 곡선
 
 ![](robustness_curve.png)
+
+## training_progress.png
+
+사전 학습된 CNN 모델들의 epoch별 validation accuracy와 training loss
+
+![](training_progress.png)
 
 ## transferability_eps_0.00.png
 

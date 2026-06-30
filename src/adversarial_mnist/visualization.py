@@ -924,6 +924,10 @@ def generate_figures_index(figures_dir: str | Path, output_path: str | Path) -> 
         "firewall_decision_breakdown.png": "원본 통과, 정화 후 통과, 의심 입력 거부 비율",
         "firewall_detection_roc_curve.png": "reconstruction error 기반 적대적 입력 탐지 ROC curve",
         "original_attacked_purified_examples.png": "원본, 공격/입력, autoencoder 정화 이미지 예시",
+        "training_progress.png": "사전 학습된 CNN 모델들의 epoch별 validation accuracy와 training loss",
+        "autoencoder_training_progress.png": "Adversarial Firewall autoencoder purifier의 reconstruction loss 변화",
+        "project_pipeline_flow.png": "전체 프로젝트 흐름: 모델 학습, 공격 평가, 한계 진단, Firewall 확장",
+        "result_storyboard.png": "FGSM 강건성, PGD 취약성, Firewall final safe accuracy를 한 장에 요약한 결과 스토리보드",
     }
     lines = ["# Figure Index", ""]
     for figure in sorted(figures_path.glob("*.png")):

@@ -47,29 +47,27 @@
 
 This section extends the original FGSM/PGD robustness study into an input-stage defense pipeline. The Firewall uses a convolutional autoencoder as a purifier, reconstruction error as an adversarial-input detector, and a reject option for suspicious low-confidence purified predictions.
 
-> WARNING: Firewall quick mode result. This run checks pipeline connectivity only; do not use it as a performance conclusion.
-
 ### Detection Performance
 
 | Model | Attack condition | AUC | TPR at FPR 5% |
 |---|---|---:|---:|
-| smallcnn_fgsm_at | ALL_ATTACKS | 0.999 | 99.80% |
+| smallcnn_fgsm_at | ALL_ATTACKS | 1.000 | 100.00% |
 | smallcnn_fgsm_at | FGSM | 1.000 | 100.00% |
-| smallcnn_fgsm_at | PGD | 0.998 | 99.60% |
+| smallcnn_fgsm_at | PGD | 1.000 | 100.00% |
 | smallcnn_standard | ALL_ATTACKS | 1.000 | 100.00% |
 | smallcnn_standard | FGSM | 1.000 | 100.00% |
-| smallcnn_standard | PGD | 0.999 | 100.00% |
+| smallcnn_standard | PGD | 1.000 | 100.00% |
 
 ### Purification and Reject Option
 
 | Model | Condition | Original accuracy | Purified accuracy | Detection rate | Reject rate | Accepted accuracy | Final safe accuracy |
 |---|---|---:|---:|---:|---:|---:|---:|
-| smallcnn_fgsm_at | Clean | 99.90% | 92.10% | 3.60% | 0.30% | 99.60% | 99.30% |
-| smallcnn_fgsm_at | FGSM | 96.70% | 85.30% | 100.00% | 15.00% | 90.94% | 92.30% |
-| smallcnn_fgsm_at | PGD | 52.50% | 81.40% | 99.50% | 17.30% | 88.15% | 90.20% |
-| smallcnn_standard | Clean | 99.50% | 92.10% | 3.60% | 0.10% | 99.40% | 99.30% |
-| smallcnn_standard | FGSM | 22.60% | 66.30% | 100.00% | 33.00% | 81.49% | 87.60% |
-| smallcnn_standard | PGD | 3.60% | 73.30% | 100.00% | 26.80% | 85.66% | 89.50% |
+| smallcnn_fgsm_at | Clean | 99.20% | 98.52% | 3.78% | 0.20% | 99.16% | 98.96% |
+| smallcnn_fgsm_at | FGSM | 96.16% | 93.98% | 100.00% | 6.80% | 96.66% | 96.89% |
+| smallcnn_fgsm_at | PGD | 29.63% | 81.98% | 100.00% | 13.63% | 86.82% | 88.62% |
+| smallcnn_standard | Clean | 99.24% | 98.71% | 3.78% | 0.15% | 99.18% | 99.03% |
+| smallcnn_standard | FGSM | 22.85% | 68.55% | 100.00% | 21.49% | 75.49% | 80.76% |
+| smallcnn_standard | PGD | 0.95% | 79.44% | 100.00% | 12.80% | 83.77% | 85.85% |
 
 ### Interpretation
 

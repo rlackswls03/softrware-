@@ -1,7 +1,7 @@
 model,condition,attack,epsilon,original_accuracy_mean,original_accuracy_std,purified_accuracy_mean,purified_accuracy_std,detection_rate_mean,detection_rate_std,reject_rate_mean,reject_rate_std,accepted_accuracy_mean,accepted_accuracy_std,final_safe_accuracy_mean,final_safe_accuracy_std
-smallcnn_fgsm_at,Clean,NONE,0.0,0.999,,0.921,,0.036,,0.003,,0.995987963891675,,0.993,
-smallcnn_fgsm_at,FGSM,FGSM,0.25,0.967,,0.853,,1.0,,0.15,,0.9094117647058824,,0.923,
-smallcnn_fgsm_at,PGD,PGD,0.25,0.525,,0.814,,0.995,,0.173,,0.8814993954050786,,0.902,
-smallcnn_standard,Clean,NONE,0.0,0.995,,0.921,,0.036,,0.001,,0.993993993993994,,0.993,
-smallcnn_standard,FGSM,FGSM,0.25,0.226,,0.663,,1.0,,0.33,,0.8149253731343283,,0.876,
-smallcnn_standard,PGD,PGD,0.25,0.036,,0.733,,1.0,,0.268,,0.8565573770491803,,0.895,
+smallcnn_fgsm_at,Clean,NONE,0.0,0.992,,0.9852,,0.0378,,0.002,,0.9915831663326653,,0.9896,
+smallcnn_fgsm_at,FGSM,FGSM,0.25,0.9616,,0.9398,,1.0,,0.068,,0.9666309012875537,,0.9689,
+smallcnn_fgsm_at,PGD,PGD,0.25,0.2963,,0.8198,,1.0,,0.1363,,0.8682412874840801,,0.8862,
+smallcnn_standard,Clean,NONE,0.0,0.9924,,0.9871,,0.0378,,0.0015,,0.9917876815222835,,0.9903,
+smallcnn_standard,FGSM,FGSM,0.25,0.2285,,0.6855,,1.0,,0.2149,,0.7549356769838237,,0.8076,
+smallcnn_standard,PGD,PGD,0.25,0.0095,,0.7944,,1.0,,0.128,,0.8377293577981652,,0.8585,

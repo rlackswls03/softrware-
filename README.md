@@ -70,6 +70,8 @@ python -m scripts.run_transferability --config configs/default.json
 python -m scripts.evaluate_pgd --config configs/default.json
 python -m scripts.evaluate_pgd_strong --config configs/default.json --seeds 42 123 2026 --test-subset 2000 --steps 20 --restarts 5 --force
 python -m scripts.plot_results --config configs/default.json
+python -m scripts.build_visual_report --config configs/default.json
+python -m scripts.build_simulation --config configs/default.json
 python -m scripts.smoke_test
 ```
 
@@ -88,6 +90,7 @@ python -m scripts.smoke_test
 - `results/aggregated/*.csv`: 여러 seed 평균과 표준편차.
 - `results/figures/*.png`: robustness curve, epsilon별 transferability heatmap, clean/robust 비교 bar chart, clean accuracy retention, PGD white-box bar chart, 공격 예시.
 - `results/figures/figure_index.md`: 생성된 그래프를 한 번에 훑어볼 수 있는 Markdown 인덱스.
+- `results/simulation/index.html`: 저장된 Firewall 예시를 단계별로 재생하는 인터랙티브 시뮬레이터.
 - `results/summary.md`: CSV에서 자동 생성한 요약 보고서.
 
 그래프만 다시 만들고 싶으면 기존 CSV를 유지한 채 다음 명령을 실행한다.
@@ -96,7 +99,37 @@ python -m scripts.smoke_test
 python -m scripts.plot_results --config configs/default.json
 ```
 
-## 9-1. Adversarial Firewall 확장
+## 9-0. 시각 보고서 생성
+
+이미 학습된 checkpoint와 저장된 CSV/PNG를 사용해 발표용 시각 스토리보드를 만들 수 있다. 새 학습을 수행하지 않고 기존 결과를 읽어서 HTML과 추가 PNG를 생성한다.
+
+```bash
+python -m scripts.build_visual_report --config configs/default.json
+```
+
+주요 생성 파일:
+
+- `results/visual_report/index.html`: 브라우저에서 열어보는 전체 시각 보고서.
+- `results/figures/project_pipeline_flow.png`: 모델 학습, 공격 평가, 한계 진단, Firewall 확장 흐름도.
+- `results/figures/training_progress.png`: 사전 학습된 CNN들의 epoch별 학습 경과.
+- `results/figures/autoencoder_training_progress.png`: Firewall autoencoder purifier 학습 경과.
+- `results/figures/result_storyboard.png`: FGSM 강건성, PGD 취약성, Firewall final safe accuracy 핵심 요약.
+
+## 9-1. 인터랙티브 시뮬레이션 생성
+
+`firewall_examples.pt`와 `firewall_results.csv`를 사용해 원본 입력, 공격 입력, autoencoder 정화, reconstruction-error 탐지, 최종 판정을 단계별로 재생하는 HTML을 만든다. 새 학습이나 새 평가를 수행하지 않는다.
+
+```bash
+python -m scripts.build_simulation --config configs/default.json
+```
+
+생성 파일:
+
+- `results/simulation/index.html`: 브라우저에서 여는 standalone 시뮬레이터.
+
+시뮬레이터에는 Clean/FGSM/PGD 조건 선택, 샘플 선택, 단계별 재생, reconstruction score와 threshold 게이지, full-test metric 비교가 포함된다. 발표에서는 정적 그래프를 먼저 보여준 뒤 이 파일로 실제 샘플 흐름을 재생하면 된다.
+
+## 9-2. Adversarial Firewall 확장
 
 기존 FGSM/PGD/전이성 분석은 Part 1로 유지한다. Part 2에서는 `smallcnn_standard`와
 `smallcnn_fgsm_at`을 대상으로 **Adversarial Firewall: 적대적 입력 탐지·정화·거부 기반 방어 파이프라인**을 추가했다.
