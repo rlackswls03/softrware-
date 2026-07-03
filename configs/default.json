@@ -1,5 +1,5 @@
 {
-  "seeds": [42],
+  "seeds": [42, 123, 2026],
   "dataset": {
     "name": "MNIST",
     "data_dir": "data",
