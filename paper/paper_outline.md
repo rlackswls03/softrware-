@@ -58,11 +58,11 @@
 
 | 항목 | 값 |
 |---|---|
-| Python | TODO: `results/environment.json`에서 기록 |
-| PyTorch | TODO: `results/environment.json`에서 기록 |
-| TorchVision | TODO: `results/environment.json`에서 기록 |
-| 장치 | TODO: `results/environment.json`에서 기록 |
-| seed | TODO: `results/run_config.json`에서 기록 |
+| Python | 3.14.0 |
+| PyTorch | 2.12.1+cpu로 기본 결과 생성, PGD-20 restart 5 full 재평가는 2.12.1+cu126 |
+| TorchVision | 0.27.1 |
+| 장치 | 기본 학습/평가 및 firewall: CPU, PGD-20 restart 5 full 재평가: CUDA GTX 1660 Ti |
+| seed | 42, 123, 2026 |
 
 ## 6. 평가 지표
 
@@ -77,12 +77,19 @@
 
 | 모델 | Clean accuracy | FGSM epsilon=0.25 robust accuracy | Clean accuracy retention |
 |---|---:|---:|---:|
-| lenet_standard | TODO | TODO | TODO |
-| smallcnn_standard | TODO | TODO | TODO |
-| lenet_fgsm_at | TODO | TODO | TODO |
-| smallcnn_fgsm_at | TODO | TODO | TODO |
+| lenet_standard | 98.35% | 2.81% | N/A |
+| smallcnn_standard | 99.25% | 28.70% | N/A |
+| lenet_fgsm_at | 97.52% | 87.57% | 99.16% |
+| smallcnn_fgsm_at | 99.19% | 96.65% | 99.94% |
 
-실행하지 않은 결과에는 임의 숫자를 넣지 않는다.
+추가 PGD 평가 결과는 다음과 같다.
+
+| 모델 | PGD-10 epsilon=0.25 robust accuracy | PGD-20 restart 5 full-test robust accuracy |
+|---|---:|---:|
+| lenet_standard | 0.85% | 0.51% |
+| smallcnn_standard | 0.94% | 0.39% |
+| lenet_fgsm_at | 15.39% | 12.33% |
+| smallcnn_fgsm_at | 10.07% | 5.54% |
 
 ## 8. 전이성 분석
 
@@ -92,10 +99,25 @@
 
 | Source / Target | lenet_standard | smallcnn_standard | lenet_fgsm_at | smallcnn_fgsm_at |
 |---|---:|---:|---:|---:|
-| lenet_standard | TODO | TODO | TODO | TODO |
-| smallcnn_standard | TODO | TODO | TODO | TODO |
-| lenet_fgsm_at | TODO | TODO | TODO | TODO |
-| smallcnn_fgsm_at | TODO | TODO | TODO | TODO |
+| lenet_standard | 97.14% | 31.17% | 28.85% | 45.46% |
+| smallcnn_standard | 21.17% | 71.09% | 19.20% | 28.57% |
+| lenet_fgsm_at | 38.10% | 30.70% | 10.85% | 29.06% |
+| smallcnn_fgsm_at | 6.48% | 22.98% | 12.50% | 2.72% |
+
+### Adversarial Firewall 결과
+
+Firewall 평가는 `smallcnn_standard`, `smallcnn_fgsm_at`에 대해 seed 42, 123, 2026과 full test 10,000개 기준으로 수행하였다.
+
+| 모델 | 조건 | Original accuracy | Purified accuracy | Final safe accuracy |
+|---|---|---:|---:|---:|
+| smallcnn_standard | Clean | 99.25% | 98.77% | 99.07% |
+| smallcnn_standard | FGSM | 28.47% | 75.11% | 83.73% |
+| smallcnn_standard | PGD | 0.99% | 84.84% | 89.15% |
+| smallcnn_fgsm_at | Clean | 99.19% | 98.58% | 98.90% |
+| smallcnn_fgsm_at | FGSM | 96.65% | 93.61% | 96.58% |
+| smallcnn_fgsm_at | PGD | 10.00% | 89.72% | 93.62% |
+
+Reconstruction error detector는 FGSM/PGD/ALL_ATTACKS 조건에서 3-seed 평균 AUC가 사실상 1.0이며, TPR@FPR 5%가 100%로 기록되었다.
 
 ## 9. 논의
 

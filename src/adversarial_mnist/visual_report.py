@@ -37,6 +37,19 @@ def _format_percent(value: float | None) -> str:
     return f"{value * 100:.2f}%"
 
 
+def _firewall_condition_means(firewall: pd.DataFrame) -> pd.DataFrame:
+    """Return one mean row per Firewall model and condition across seeds."""
+    required = {"model", "condition", "final_safe_accuracy", "reject_rate"}
+    missing = required - set(firewall.columns)
+    if missing:
+        raise ValueError(f"Firewall results are missing required columns: {sorted(missing)}")
+    return (
+        firewall[firewall["model"].isin(SMALLCNN_MODELS)]
+        .groupby(["model", "condition"], as_index=False)[["final_safe_accuracy", "reject_rate"]]
+        .mean()
+    )
+
+
 def _bar_label(axis: plt.Axes, bars: Any, values: list[float]) -> None:
     for bar, value in zip(bars, values, strict=True):
         label = "NaN" if pd.isna(value) else f"{value * 100:.1f}%"
@@ -253,7 +266,7 @@ def plot_result_storyboard(raw_dir: str | Path, output_path: str | Path) -> None
     axes[1].set_ylabel("Robust accuracy")
     axes[1].grid(axis="y", alpha=0.3)
 
-    firewall_subset = firewall[firewall["model"].isin(SMALLCNN_MODELS)]
+    firewall_subset = _firewall_condition_means(firewall)
     condition_order = ["Clean", "FGSM", "PGD"]
     x_positions = np.arange(len(condition_order))
     for offset, model_key, color in [
@@ -319,14 +332,15 @@ def _metrics_for_html(config: dict[str, Any]) -> dict[str, str]:
     firewall_pgd = firewall[
         (firewall["model"] == "smallcnn_fgsm_at") & (firewall["condition"] == "PGD")
     ]
-    firewall_pgd_safe = (
-        float(firewall_pgd["final_safe_accuracy"].iloc[0]) if not firewall_pgd.empty else math.nan
-    )
+    firewall_pgd_safe = float(firewall_pgd["final_safe_accuracy"].mean())
+    if firewall_pgd.empty:
+        firewall_pgd_safe = math.nan
     return {
         "smallcnn_clean": _format_percent(float(clean_mean.get("smallcnn_fgsm_at", math.nan))),
         "smallcnn_fgsm": _format_percent(float(fgsm_mean.get("smallcnn_fgsm_at", math.nan))),
         "smallcnn_pgd": _format_percent(float(pgd_mean.get("smallcnn_fgsm_at", math.nan))),
         "firewall_pgd_safe": _format_percent(firewall_pgd_safe),
+        "firewall_seed_note": "Firewall 값은 seed 42, 123, 2026 full test 평균입니다.",
     }
 
 
@@ -528,7 +542,7 @@ def build_visual_report(config: dict[str, Any]) -> Path:
         <div class="metric"><span>SmallCNN FGSM-AT PGD eps=0.25</span><strong>{metrics["smallcnn_pgd"]}</strong></div>
         <div class="metric"><span>Firewall PGD final safe accuracy</span><strong>{metrics["firewall_pgd_safe"]}</strong></div>
       </div>
-      <p class="note">Firewall 값은 seed 42 full test set 기준입니다. 기존 FGSM/PGD/전이성 실험은 여러 seed 결과를 포함합니다.</p>
+      <p class="note">{metrics["firewall_seed_note"]} 기존 FGSM/PGD/전이성 실험도 seed 42, 123, 2026 결과를 포함합니다.</p>
     </section>
 
     <section>

@@ -3,7 +3,8 @@
 ## Purpose
 
 This repository studies MNIST adversarial robustness with FGSM, FGSM adversarial
-training, transfer attacks, and PGD white-box evaluation.
+training, transfer attacks, PGD white-box evaluation, and an Adversarial Firewall
+prototype for input detection, purification, and rejection.
 
 ## Structure
 
@@ -17,10 +18,12 @@ training, transfer attacks, and PGD white-box evaluation.
 
 ```bash
 python -m pip install -e .
-ruff check .
-pytest -q
+python -m ruff check .
+python -m pytest -q
 python -m scripts.smoke_test
 python -m scripts.run_pipeline --quick
+python -m scripts.evaluate_pgd_strong --seeds 42 123 2026 --test-subset 10000 --device cuda --force
+python -m scripts.evaluate_firewall --seeds 42 123 2026 --force
 ```
 
 ## Ground Rules
@@ -28,6 +31,6 @@ python -m scripts.run_pipeline --quick
 - Do not fabricate or massage experiment results.
 - Never train on the MNIST test set.
 - Epsilon values are defined in `[0, 1]` pixel space; the default transform is `ToTensor()`.
-- After code changes, run `pytest`, `ruff`, and the smoke test when the environment allows.
+- After code changes, run `python -m pytest`, `python -m ruff check .`, and the smoke test when the environment allows.
 - Document only numbers produced by real executions.
 - Keep code typed, modular, and import-safe; importing modules must not download data or start training.

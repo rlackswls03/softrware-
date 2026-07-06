@@ -1,4 +1,4 @@
-"""Evaluate PGD-20 with five random restarts on a fixed test subset."""
+"""Evaluate PGD-20 with five random restarts on the MNIST test set."""
 
 from __future__ import annotations
 
@@ -16,7 +16,12 @@ from adversarial_mnist.evaluation import (
     write_csv,
 )
 from adversarial_mnist.metrics import aggregate_mean_std
-from adversarial_mnist.utils import ensure_dir, set_reproducibility, setup_logging
+from adversarial_mnist.utils import (
+    ensure_dir,
+    set_reproducibility,
+    setup_logging,
+    write_environment,
+)
 from adversarial_mnist.visualization import plot_pgd_whitebox_bar
 from scripts.common import add_common_args, prepare_config, prepare_device
 
@@ -26,7 +31,12 @@ LOGGER = logging.getLogger(__name__)
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
-    parser.add_argument("--test-subset", type=int, default=2000)
+    parser.add_argument(
+        "--test-subset",
+        type=int,
+        default=10000,
+        help="Number of test samples to evaluate; use a smaller value for a quicker diagnostic run.",
+    )
     parser.add_argument("--epsilon", type=float, default=0.25)
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--restarts", type=int, default=5)
@@ -40,6 +50,7 @@ def main() -> None:
     args = build_parser().parse_args()
     config = prepare_config(args)
     device = prepare_device(args)
+    write_environment(Path(config["paths"]["results_dir"]) / "pgd20_restart5_environment.json", device)
     eval_config = copy.deepcopy(config)
     eval_config["dataset"]["test_subset"] = args.test_subset
     eval_config["training"]["test_batch_size"] = args.test_batch_size

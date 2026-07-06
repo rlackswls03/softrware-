@@ -27,6 +27,17 @@
 | lenet_fgsm_at | 15.39% |
 | smallcnn_fgsm_at | 10.07% |
 
+## Strong PGD-20 Restart-5 Evaluation
+
+This additional evaluation was rerun on the full 10,000-sample MNIST test set for seeds `42`, `123`, and `2026`.
+
+| Model | PGD-20 restart-5 robust accuracy |
+|---|---:|
+| lenet_standard | 0.51% |
+| smallcnn_standard | 0.39% |
+| lenet_fgsm_at | 12.33% |
+| smallcnn_fgsm_at | 5.54% |
+
 ## Main Observations
 
 - FGSM robustness was compared at epsilon `0.25` in `[0, 1]` pixel space.
@@ -62,12 +73,12 @@ This section extends the original FGSM/PGD robustness study into an input-stage 
 
 | Model | Condition | Original accuracy | Purified accuracy | Detection rate | Reject rate | Accepted accuracy | Final safe accuracy |
 |---|---|---:|---:|---:|---:|---:|---:|
-| smallcnn_fgsm_at | Clean | 99.20% | 98.52% | 3.78% | 0.20% | 99.16% | 98.96% |
-| smallcnn_fgsm_at | FGSM | 96.16% | 93.98% | 100.00% | 6.80% | 96.66% | 96.89% |
-| smallcnn_fgsm_at | PGD | 29.63% | 81.98% | 100.00% | 13.63% | 86.82% | 88.62% |
-| smallcnn_standard | Clean | 99.24% | 98.71% | 3.78% | 0.15% | 99.18% | 99.03% |
-| smallcnn_standard | FGSM | 22.85% | 68.55% | 100.00% | 21.49% | 75.49% | 80.76% |
-| smallcnn_standard | PGD | 0.95% | 79.44% | 100.00% | 12.80% | 83.77% | 85.85% |
+| smallcnn_fgsm_at | Clean | 99.19% | 98.58% | 4.17% | 0.25% | 99.15% | 98.90% |
+| smallcnn_fgsm_at | FGSM | 96.65% | 93.61% | 100.00% | 6.76% | 96.33% | 96.58% |
+| smallcnn_fgsm_at | PGD | 10.00% | 89.72% | 100.00% | 8.29% | 92.85% | 93.62% |
+| smallcnn_standard | Clean | 99.25% | 98.77% | 4.17% | 0.14% | 99.22% | 99.07% |
+| smallcnn_standard | FGSM | 28.47% | 75.11% | 100.00% | 15.47% | 80.46% | 83.73% |
+| smallcnn_standard | PGD | 0.99% | 84.84% | 100.00% | 8.74% | 87.98% | 89.15% |
 
 ### Interpretation
 

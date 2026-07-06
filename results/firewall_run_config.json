@@ -108,7 +108,9 @@
   },
   "reference_robust_accuracy_target": 0.9,
   "seeds": [
-    42
+    42,
+    123,
+    2026
   ],
   "training": {
     "adversarial_loss_weight": 0.5,
