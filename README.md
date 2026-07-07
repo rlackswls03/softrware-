@@ -1,4 +1,4 @@
-# MNIST FGSM 적대적 훈련 및 전이성 분석
+# FGSM 적대적 훈련의 일반화 한계 분석 및 Adversarial Firewall 방어 파이프라인
 
 ## 1. 프로젝트 개요
 
@@ -9,6 +9,10 @@
 “FGSM 적대적 훈련으로 향상된 강건성이 다른 구조의 모델에서 생성된 전이 공격과 더 강한 반복 공격인 PGD에도 유지되는가?”
 
 비교 대상은 `LeNet`과 `SmallCNN`, 학습 방식은 `standard`와 `fgsm_at`이다. 최종 모델은 `lenet_standard`, `smallcnn_standard`, `lenet_fgsm_at`, `smallcnn_fgsm_at` 네 개다.
+
+확장 연구 질문은 다음과 같다.
+
+“FGSM 적대적 훈련이 PGD와 전이 공격에서 일반화 한계를 보일 때, 입력 단계의 탐지·정화·거부 기반 Adversarial Firewall이 자동 오분류 위험을 줄일 수 있는가?”
 
 ## 3. 설치 방법
 
@@ -218,7 +222,7 @@ Firewall 결과 파일:
 
 - Clean accuracy: 공격 없는 테스트 정확도.
 - Robust accuracy: 공격 이미지 테스트 정확도.
-- Attack success rate: 전체 평가 샘플 중 공격 이미지에서 target 모델이 오분류한 비율.
+- Attack success rate: 전체 평가 샘플 중 공격 이미지에서 target 모델이 오분류한 비율. 현재 CSV의 `attack_success_rate`는 `1 - robust_accuracy`로 계산되므로 엄밀한 조건부 공격 성공률보다는 전체 적대적 오분류율에 가깝다.
 - Conditional transfer success rate: source와 target이 원본 이미지를 모두 맞힌 샘플만 분모로 두고, source 모델로 만든 공격 이미지가 target 모델을 오분류하게 만든 비율.
 - Clean accuracy retention: 같은 구조의 일반 학습 모델 대비 방어 모델의 clean accuracy 비율.
 
@@ -263,7 +267,8 @@ MNIST는 작고 정형화된 데이터셋이므로 실제 환경의 복잡한 �
 - 물리적 적대적 패치.
 - 객체탐지 모델.
 - BIM, DeepFool 등 추가 공격.
-- 탐지 및 정화 방어.
+- adaptive attack을 고려한 탐지·정화 방어 강건성 평가.
+- Feature squeezing, prediction disagreement 등 다중 탐지기 앙상블 비교.
 - 새로운 공격 알고리즘 개발.
 
 ## 15. 문제 해결
