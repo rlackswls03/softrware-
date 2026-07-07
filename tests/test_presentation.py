@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 import torch
 
 from adversarial_mnist.firewall import ACCEPT_ORIGINAL, ACCEPT_PURIFIED
@@ -112,10 +114,19 @@ def _build_fixture(raw_dir: Path, aggregated_dir: Path) -> None:
     ]
     _write_csv(transfer_rows, aggregated_dir / "transferability_summary.csv")
 
+    # Detection AUC/TPR varies per seed (one row per model/seed/condition) so this
+    # also exercises the seed-averaging path rather than a single-seed passthrough.
     detection_rows = [
-        {"model": model, "attack_condition": condition, "auc": 1.0, "tpr_at_fpr_5": 1.0}
+        {
+            "model": model,
+            "seed": seed,
+            "attack_condition": condition,
+            "auc": 0.98 + 0.01 * seed_idx,
+            "tpr_at_fpr_5": 0.9 + 0.05 * seed_idx,
+        }
         for model in ("smallcnn_standard", "smallcnn_fgsm_at")
         for condition in ("FGSM", "PGD", "ALL_ATTACKS")
+        for seed_idx, seed in enumerate(SEEDS)
     ]
     _write_csv(detection_rows, aggregated_dir / "firewall_detection_summary.csv")
 
@@ -123,20 +134,30 @@ def _build_fixture(raw_dir: Path, aggregated_dir: Path) -> None:
         "evaluated_samples": 100,
         "threshold": 0.006,
         "min_confidence": 0.7,
-        "original_accuracy": 0.5,
         "purified_accuracy": 0.8,
         "detection_rate": 1.0,
         "reject_rate": 0.1,
         "accepted_accuracy": 0.85,
-        "final_safe_accuracy": 0.88,
         "accept_original_rate": 0.6,
         "accept_purified_rate": 0.3,
         "reject_suspicious_rate": 0.1,
     }
+    # original_accuracy/final_safe_accuracy vary per seed (one row per
+    # model/seed/condition) so this exercises the seed-averaging path rather
+    # than a single-seed passthrough (a prior bug silently kept only the last
+    # seed's row per model/condition).
     firewall_results_rows = [
-        {"model": model, "seed": 42, "condition": condition, **firewall_result_fields}
+        {
+            "model": model,
+            "seed": seed,
+            "condition": condition,
+            "original_accuracy": 0.2 + 0.1 * seed_idx,
+            "final_safe_accuracy": 0.7 + 0.1 * seed_idx,
+            **firewall_result_fields,
+        }
         for model in ("smallcnn_standard", "smallcnn_fgsm_at")
         for condition in ("Clean", "FGSM", "PGD")
+        for seed_idx, seed in enumerate(SEEDS)
     ]
     _write_csv(firewall_results_rows, raw_dir / "firewall_results.csv")
 
@@ -195,3 +216,19 @@ def test_build_presentation_from_saved_artifacts(tmp_path: Path) -> None:
     assert "Adversarial Firewall" in html
     assert "smallcnn_fgsm_at" in html
     assert html.count("data:image/png;base64,") == 18
+
+    prefix = "const DATA = "
+    start = html.index(prefix) + len(prefix)
+    end = html.index(";\n</script>", start)
+    data = json.loads(html[start:end])
+
+    # Multi-seed rows must be averaged, not collapsed to whichever seed's row
+    # happened to be iterated last (seed_idx 0, 1, 2 -> mean of 0.2/0.3/0.4 and
+    # 0.7/0.8/0.9 respectively; see _build_fixture).
+    pgd_result = data["firewall"]["results"]["smallcnn_fgsm_at"]["PGD"]
+    assert pgd_result["original_accuracy"] == pytest.approx(0.3)
+    assert pgd_result["final_safe_accuracy"] == pytest.approx(0.8)
+
+    pgd_detection = data["firewall"]["detection"]["smallcnn_fgsm_at"]["PGD"]
+    assert pgd_detection["auc"] == pytest.approx(0.99)
+    assert pgd_detection["tprAtFpr5"] == pytest.approx(0.95)

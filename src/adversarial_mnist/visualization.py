@@ -796,6 +796,7 @@ def generate_summary_markdown(config: dict[str, Any], output_path: str | Path) -
     robust_file = _require_file(raw_dir / "fgsm_robustness.csv")
     transfer_file = _require_file(raw_dir / "transferability_long.csv")
     pgd_file = _require_file(raw_dir / "pgd_whitebox.csv")
+    strong_pgd_file = raw_dir / "pgd20_restart5_whitebox.csv"
 
     clean = pd.read_csv(clean_file)
     robust = pd.read_csv(robust_file)
@@ -809,6 +810,17 @@ def generate_summary_markdown(config: dict[str, Any], output_path: str | Path) -
     retention = _retention_by_model(clean_means)
     outgoing, incoming = _transfer_direction_means(transfer, epsilon)
     pgd_means = pgd.groupby("model")["robust_accuracy"].mean().reindex(MODEL_ORDER)
+    strong_pgd_means: pd.Series | None = None
+    strong_pgd_sample_count: int | None = None
+    if strong_pgd_file.exists():
+        strong_pgd = pd.read_csv(strong_pgd_file)
+        strong_pgd_means = (
+            strong_pgd.groupby("model")["robust_accuracy"].mean().reindex(MODEL_ORDER)
+        )
+        if "evaluated_samples" in strong_pgd.columns:
+            sample_counts = strong_pgd["evaluated_samples"].dropna().astype(int).unique()
+            if len(sample_counts) == 1:
+                strong_pgd_sample_count = int(sample_counts[0])
 
     lines: list[str] = [
         "# Experiment Summary",
@@ -875,6 +887,28 @@ def generate_summary_markdown(config: dict[str, Any], output_path: str | Path) -
     for model_key in MODEL_ORDER:
         lines.append(f"| {model_key} | {_format_percent(float(pgd_means.get(model_key, math.nan)))} |")
 
+    if strong_pgd_means is not None:
+        sample_text = (
+            f" on the full {strong_pgd_sample_count:,}-sample MNIST test set"
+            if strong_pgd_sample_count is not None
+            else ""
+        )
+        lines.extend(
+            [
+                "",
+                "## Strong PGD-20 Restart-5 Evaluation",
+                "",
+                f"This additional evaluation was rerun{sample_text} for seeds `42`, `123`, and `2026`.",
+                "",
+                "| Model | PGD-20 restart-5 robust accuracy |",
+                "|---|---:|",
+            ]
+        )
+        for model_key in MODEL_ORDER:
+            lines.append(
+                f"| {model_key} | {_format_percent(float(strong_pgd_means.get(model_key, math.nan)))} |"
+            )
+
     defended_models = ["lenet_fgsm_at", "smallcnn_fgsm_at"]
     stronger_than_standard = [
         model_key
@@ -917,7 +951,7 @@ def generate_figures_index(figures_dir: str | Path, output_path: str | Path) -> 
         "clean_robust_comparison.png": "clean accuracy와 epsilon=0.25 FGSM robust accuracy 비교",
         "clean_accuracy_retention.png": "FGSM adversarial training 모델의 clean accuracy retention",
         "pgd_whitebox.png": "PGD L-infinity white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시",
-        "pgd20_restart5_whitebox.png": "PGD-20 restart 5회 white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시",
+        "pgd20_restart5_whitebox.png": "PGD-20 restart 5회 white-box robust accuracy 비교. full test 10,000개, seed 42/123/2026 기준 평균, 표준편차, seed별 점을 함께 표시",
         "adversarial_examples.png": "원본, FGSM, PGD 이미지 예시",
         "firewall_score_distribution.png": "Adversarial Firewall reconstruction error 점수 분포",
         "firewall_accuracy_recovery.png": "Firewall 적용 전, 정화 후, 최종 safe accuracy 비교",

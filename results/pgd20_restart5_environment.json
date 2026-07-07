@@ -1,0 +1,29 @@
+{
+  "created_at_utc": "2026-07-06T07:19:30.279991+00:00",
+  "cuda_available": true,
+  "cuda_devices": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "NVIDIA GeForce GTX 1660 Ti"
+    }
+  ],
+  "device": "cuda",
+  "git_commit": "38bb57f50c3f818c21f11cd405dd3e2f8e3f9ec4",
+  "machine": "AMD64",
+  "matplotlib": "3.10.7",
+  "mps_available": false,
+  "numpy": "2.3.4",
+  "pandas": "3.0.3",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",
+  "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+  "python_executable": "C:\\Program Files\\Python314\\python.exe",
+  "release": "11",
+  "system": "Windows",
+  "torch": "2.12.1+cu126",
+  "torchvision": "0.27.1+cu126"
+}

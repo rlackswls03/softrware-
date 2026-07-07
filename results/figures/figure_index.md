@@ -56,7 +56,7 @@ Adversarial Firewall reconstruction error 점수 분포
 
 ## pgd20_restart5_whitebox.png
 
-PGD-20 restart 5회 white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시
+PGD-20 restart 5회 white-box robust accuracy 비교. full test 10,000개, seed 42/123/2026 기준 평균, 표준편차, seed별 점을 함께 표시
 
 ![](pgd20_restart5_whitebox.png)
 

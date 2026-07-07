@@ -233,15 +233,18 @@ def _fgsm_seed_rows(raw_dir: Path, model: str, seed: int) -> list[dict[str, Any]
 
 
 def _firewall_detection(aggregated_dir: Path) -> dict[str, Any]:
+    # firewall_detection_summary.csv has one row per (model, seed, attack_condition);
+    # average across seeds so multi-seed runs don't collapse to whichever seed's
+    # row happens to come last in the groupby iteration order.
     summary = _read_csv(aggregated_dir / "firewall_detection_summary.csv")
+    mean_std = aggregate_mean_std(
+        summary, group_columns=["model", "attack_condition"], metric_columns=["auc", "tpr_at_fpr_5"]
+    )
     detection: dict[str, Any] = {}
-    for model, group in summary.groupby("model"):
-        detection[model] = {
-            row["attack_condition"]: {
-                "auc": float(row["auc"]),
-                "tprAtFpr5": float(row["tpr_at_fpr_5"]),
-            }
-            for _, row in group.iterrows()
+    for _, row in mean_std.iterrows():
+        detection.setdefault(row["model"], {})[row["attack_condition"]] = {
+            "auc": float(row["auc_mean"]),
+            "tprAtFpr5": float(row["tpr_at_fpr_5_mean"]),
         }
     return detection
 
@@ -263,12 +266,17 @@ FIREWALL_RESULT_FIELDS = (
 
 
 def _firewall_results(results_path: Path) -> dict[str, Any]:
+    # firewall_results.csv has one row per (model, seed, condition); average across
+    # seeds so multi-seed runs don't collapse to whichever seed's row happens to
+    # come last in the groupby iteration order.
     raw = _read_csv(results_path)
+    mean_std = aggregate_mean_std(
+        raw, group_columns=["model", "condition"], metric_columns=list(FIREWALL_RESULT_FIELDS)
+    )
     results: dict[str, Any] = {}
-    for model, group in raw.groupby("model"):
-        results[model] = {
-            row["condition"]: {field: _clean_value(row[field]) for field in FIREWALL_RESULT_FIELDS}
-            for _, row in group.iterrows()
+    for _, row in mean_std.iterrows():
+        results.setdefault(row["model"], {})[row["condition"]] = {
+            field: _clean_value(row[f"{field}_mean"]) for field in FIREWALL_RESULT_FIELDS
         }
     return results
 
@@ -283,7 +291,10 @@ def _score_histograms(raw_dir: Path) -> dict[str, Any]:
         histograms.setdefault(model, {})[condition] = counts.astype(int).tolist()
     return {
         "binEdges": bin_edges.tolist(),
-        "threshold": float(raw["threshold"].iloc[0]),
+        # threshold is constant within a seed but varies slightly across seeds
+        # (each seed calibrates its own autoencoder); average for a single
+        # reference line since scores from all seeds are pooled in the histogram.
+        "threshold": float(raw["threshold"].mean()),
         "series": histograms,
     }
 

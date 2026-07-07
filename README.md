@@ -1,4 +1,4 @@
-# MNIST FGSM 적대적 훈련 및 전이성 분석
+# FGSM 적대적 훈련의 일반화 한계 분석 및 Adversarial Firewall 방어 파이프라인
 
 ## 1. 프로젝트 개요
 
@@ -9,6 +9,10 @@
 “FGSM 적대적 훈련으로 향상된 강건성이 다른 구조의 모델에서 생성된 전이 공격과 더 강한 반복 공격인 PGD에도 유지되는가?”
 
 비교 대상은 `LeNet`과 `SmallCNN`, 학습 방식은 `standard`와 `fgsm_at`이다. 최종 모델은 `lenet_standard`, `smallcnn_standard`, `lenet_fgsm_at`, `smallcnn_fgsm_at` 네 개다.
+
+확장 연구 질문은 다음과 같다.
+
+“FGSM 적대적 훈련이 PGD와 전이 공격에서 일반화 한계를 보일 때, 입력 단계의 탐지·정화·거부 기반 Adversarial Firewall이 자동 오분류 위험을 줄일 수 있는가?”
 
 ## 3. 설치 방법
 
@@ -68,7 +72,7 @@ python -m scripts.train_models --config configs/default.json
 python -m scripts.evaluate_robustness --config configs/default.json
 python -m scripts.run_transferability --config configs/default.json
 python -m scripts.evaluate_pgd --config configs/default.json
-python -m scripts.evaluate_pgd_strong --config configs/default.json --seeds 42 123 2026 --test-subset 2000 --steps 20 --restarts 5 --force
+python -m scripts.evaluate_pgd_strong --config configs/default.json --seeds 42 123 2026 --test-subset 10000 --steps 20 --restarts 5 --device cuda --force
 python -m scripts.plot_results --config configs/default.json
 python -m scripts.build_visual_report --config configs/default.json
 python -m scripts.build_simulation --config configs/default.json
@@ -76,17 +80,19 @@ python -m scripts.smoke_test
 ```
 
 이미 checkpoint가 있으면 `scripts.train_models`는 기본적으로 덮어쓰지 않는다. 다시 학습하려면 `--force`를 사용한다.
+CUDA가 없는 환경에서는 `evaluate_pgd_strong` 명령의 `--device cuda`를 빼거나 `--device cpu`로 바꾼다.
 
 ## 9. 결과 파일 설명
 
 - `results/environment.json`: Python, PyTorch, TorchVision, NumPy, OS, 장치, Git commit hash.
+- `results/pgd20_restart5_environment.json`: PGD-20 restart 5회 CUDA 재평가 실행 환경.
 - `results/run_config.json`: 실제 실행에 사용된 config.
 - `results/raw/training_history.csv`: epoch별 학습 및 validation 기록.
 - `results/raw/clean_accuracy.csv`: 모델별 clean accuracy.
 - `results/raw/fgsm_robustness.csv`: epsilon별 FGSM white-box 평가.
 - `results/raw/transferability_long.csv`: source-target FGSM 전이성 long-form 결과.
 - `results/raw/pgd_whitebox.csv`: PGD L-infinity white-box 평가.
-- `results/raw/pgd20_restart5_whitebox.csv`: 고정 test subset 2,000개에서 수행한 PGD-20 restart 5회 white-box 평가.
+- `results/raw/pgd20_restart5_whitebox.csv`: full test 10,000개에서 수행한 PGD-20 restart 5회 white-box 평가.
 - `results/aggregated/*.csv`: 여러 seed 평균과 표준편차.
 - `results/figures/*.png`: robustness curve, epsilon별 transferability heatmap, clean/robust 비교 bar chart, clean accuracy retention, PGD white-box bar chart, 공격 예시.
 - `results/figures/figure_index.md`: 생성된 그래프를 한 번에 훑어볼 수 있는 Markdown 인덱스.
@@ -99,7 +105,29 @@ python -m scripts.smoke_test
 python -m scripts.plot_results --config configs/default.json
 ```
 
-## 9-0. 시각 보고서 생성
+## 9-0. 현재 저장된 full 결과 요약
+
+현재 저장된 주요 결과는 quick이 아니라 full test 기준이다. 기본 clean/FGSM/PGD/전이성 평가는 seed `42`, `123`, `2026` 평균이며, strong PGD-20 restart 5회도 full test 10,000개로 재평가되어 있다.
+
+| 모델 | Clean accuracy | FGSM ε=0.25 robust | PGD-10 ε=0.25 robust | PGD-20 restart 5 robust |
+|---|---:|---:|---:|---:|
+| `lenet_standard` | 98.35% | 2.81% | 0.85% | 0.51% |
+| `smallcnn_standard` | 99.25% | 28.70% | 0.94% | 0.39% |
+| `lenet_fgsm_at` | 97.52% | 87.57% | 15.39% | 12.33% |
+| `smallcnn_fgsm_at` | 99.19% | 96.65% | 10.07% | 5.54% |
+
+Firewall 확장도 seed `42`, `123`, `2026`과 full test 10,000개 기준으로 갱신되어 있다.
+
+| 모델 | 조건 | Original accuracy | Purified accuracy | Final safe accuracy |
+|---|---|---:|---:|---:|
+| `smallcnn_standard` | Clean | 99.25% | 98.77% | 99.07% |
+| `smallcnn_standard` | FGSM | 28.47% | 75.11% | 83.73% |
+| `smallcnn_standard` | PGD | 0.99% | 84.84% | 89.15% |
+| `smallcnn_fgsm_at` | Clean | 99.19% | 98.58% | 98.90% |
+| `smallcnn_fgsm_at` | FGSM | 96.65% | 93.61% | 96.58% |
+| `smallcnn_fgsm_at` | PGD | 10.00% | 89.72% | 93.62% |
+
+## 9-1. 시각 보고서 생성
 
 이미 학습된 checkpoint와 저장된 CSV/PNG를 사용해 발표용 시각 스토리보드를 만들 수 있다. 새 학습을 수행하지 않고 기존 결과를 읽어서 HTML과 추가 PNG를 생성한다.
 
@@ -115,7 +143,7 @@ python -m scripts.build_visual_report --config configs/default.json
 - `results/figures/autoencoder_training_progress.png`: Firewall autoencoder purifier 학습 경과.
 - `results/figures/result_storyboard.png`: FGSM 강건성, PGD 취약성, Firewall final safe accuracy 핵심 요약.
 
-## 9-1. 인터랙티브 시뮬레이션 생성
+## 9-2. 인터랙티브 시뮬레이션 생성
 
 `firewall_examples.pt`와 `firewall_results.csv`를 사용해 원본 입력, 공격 입력, autoencoder 정화, reconstruction-error 탐지, 최종 판정을 단계별로 재생하는 HTML을 만든다. 새 학습이나 새 평가를 수행하지 않는다.
 
@@ -129,7 +157,7 @@ python -m scripts.build_simulation --config configs/default.json
 
 시뮬레이터에는 Clean/FGSM/PGD 조건 선택, 샘플 선택, 단계별 재생, reconstruction score와 threshold 게이지, full-test metric 비교가 포함된다. 발표에서는 정적 그래프를 먼저 보여준 뒤 이 파일로 실제 샘플 흐름을 재생하면 된다.
 
-## 9-2. Adversarial Firewall 확장
+## 9-3. Adversarial Firewall 확장
 
 기존 FGSM/PGD/전이성 분석은 Part 1로 유지한다. Part 2에서는 `smallcnn_standard`와
 `smallcnn_fgsm_at`을 대상으로 **Adversarial Firewall: 적대적 입력 탐지·정화·거부 기반 방어 파이프라인**을 추가했다.
@@ -154,13 +182,13 @@ python -m scripts.run_firewall_pipeline --quick --force
 
 Firewall quick 모드는 test subset 1,000개, PGD 3 step, autoencoder 10 epoch를 사용한다. 성능 결론이 아니라 탐지·정화·거부 파이프라인과 시각화 산출물 연결 검증용이다.
 
-기존 full checkpoint를 사용한 seed 42 평가:
+기존 full checkpoint를 사용한 3-seed full 평가:
 
 ```bash
-python -m scripts.run_firewall_pipeline --force --seeds 42
+python -m scripts.run_firewall_pipeline --force --seeds 42 123 2026
 ```
 
-CPU 환경에서 full test 10,000개와 PGD 10 step 평가는 오래 걸릴 수 있다. 중간 규모 검증은 다음처럼 줄여서 실행할 수 있다.
+CPU 환경에서 full test 10,000개와 PGD 10 step 평가는 오래 걸릴 수 있다. GPU가 있으면 `--device cuda`를 사용할 수 있다. 중간 규모 검증은 다음처럼 줄여서 실행할 수 있다.
 
 ```bash
 python -m scripts.run_firewall_pipeline --force --seeds 42 --test-subset 2000 --pgd-steps 3
@@ -169,8 +197,8 @@ python -m scripts.run_firewall_pipeline --force --seeds 42 --test-subset 2000 --
 개별 실행:
 
 ```bash
-python -m scripts.train_autoencoder --config configs/default.json --seeds 42 --force
-python -m scripts.evaluate_firewall --config configs/default.json --seeds 42 --force
+python -m scripts.train_autoencoder --config configs/default.json --seeds 42 123 2026 --force
+python -m scripts.evaluate_firewall --config configs/default.json --seeds 42 123 2026 --force
 python -m scripts.plot_firewall_results --config configs/default.json
 ```
 
@@ -210,7 +238,7 @@ python -m scripts.build_presentation --config configs/default.json
 
 - Clean accuracy: 공격 없는 테스트 정확도.
 - Robust accuracy: 공격 이미지 테스트 정확도.
-- Attack success rate: 전체 평가 샘플 중 공격 이미지에서 target 모델이 오분류한 비율.
+- Attack success rate: 전체 평가 샘플 중 공격 이미지에서 target 모델이 오분류한 비율. 현재 CSV의 `attack_success_rate`는 `1 - robust_accuracy`로 계산되므로 엄밀한 조건부 공격 성공률보다는 전체 적대적 오분류율에 가깝다.
 - Conditional transfer success rate: source와 target이 원본 이미지를 모두 맞힌 샘플만 분모로 두고, source 모델로 만든 공격 이미지가 target 모델을 오분류하게 만든 비율.
 - Clean accuracy retention: 같은 구조의 일반 학습 모델 대비 방어 모델의 clean accuracy 비율.
 
@@ -255,7 +283,8 @@ MNIST는 작고 정형화된 데이터셋이므로 실제 환경의 복잡한 �
 - 물리적 적대적 패치.
 - 객체탐지 모델.
 - BIM, DeepFool 등 추가 공격.
-- 탐지 및 정화 방어.
+- adaptive attack을 고려한 탐지·정화 방어 강건성 평가.
+- Feature squeezing, prediction disagreement 등 다중 탐지기 앙상블 비교.
 - 새로운 공격 알고리즘 개발.
 
 ## 15. 문제 해결
@@ -279,8 +308,8 @@ Windows에서 multiprocessing 문제가 나면 config의 `num_workers`를 `0`으
 ## 검증 명령
 
 ```bash
-ruff check .
-pytest -q
+python -m ruff check .
+python -m pytest -q
 python -m scripts.smoke_test
 python -m scripts.run_pipeline --quick
 ```
