@@ -190,6 +190,22 @@ Firewall 결과 파일:
 
 주의: 이 방어는 adaptive attack에 대한 보장을 제공하지 않는 prototype이다. quick 결과는 연결 검증용이며 성능 결론으로 사용하면 안 된다.
 
+## 9-3. 발표용 프레젠테이션 생성
+
+`results/simulation/index.html`이 단일 화면 대시보드라면, 이 명령은 발표 시연을 위한 슬라이드형 인터랙티브 프레젠테이션을 만든다. 새 학습이나 새 평가를 수행하지 않고, 기존 CSV/JSON/checkpoint 결과만 읽어서 하나의 standalone HTML로 구성한다.
+
+```bash
+python -m scripts.build_presentation --config configs/default.json
+```
+
+생성 파일:
+
+- `results/presentation/index.html`: 브라우저에서 전체화면으로 여는 발표용 슬라이드 덱.
+
+구성은 9장으로 이어진다. 연구 질문과 4개 모델 소개, FGSM 적대적 훈련의 효과(clean 대비 강건 정확도, epsilon 곡선과 비단조 현상), PGD 앞에서의 붕괴(seed별 산점도, PGD-10/PGD-20 restart×5 토글), 모델 간 전이 공격 비대칭성 heatmap, Adversarial Firewall 파이프라인 구조, 저장된 실제 MNIST 샘플로 원본·공격·정화·탐지·판정을 단계별로 재생하는 라이브 데모, 방화벽 적용 전후 정확도 회복과 reconstruction error 분포, 마지막으로 결론과 한계 순서다. 모든 수치는 `results/aggregated/`, `results/raw/`, `firewall_examples.pt`에서 읽으며 하드코딩된 결과 값은 없다.
+
+발표 중에는 화살표 키(← →) 또는 Space로 슬라이드를 넘기고, `F`로 전체화면, 하단 점을 클릭해 특정 슬라이드로 바로 이동할 수 있다. 라이브 데모 슬라이드에서는 조건(Clean/FGSM/PGD)과 샘플을 선택해 파이프라인을 재생하거나 자동 순환시킬 수 있다.
+
 ## 10. 지표 정의
 
 - Clean accuracy: 공격 없는 테스트 정확도.
