@@ -13,6 +13,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(Path("results") / ".matplotlib"))
 import matplotlib
 import numpy as np
 import pandas as pd
+import torch
 
 from adversarial_mnist.models import MODEL_ORDER
 from adversarial_mnist.utils import ensure_dir
@@ -22,6 +23,12 @@ import matplotlib.pyplot as plt  # noqa: E402, I001
 
 
 SMALLCNN_MODELS = ["smallcnn_standard", "smallcnn_fgsm_at"]
+PRESENTATION_COLORS = {
+    "clean": "#2f5d7c",
+    "fgsm": "#d88c2d",
+    "pgd": "#b64b4b",
+    "firewall": "#2f7a55",
+}
 
 
 def _require_file(path: str | Path) -> Path:
@@ -35,6 +42,23 @@ def _format_percent(value: float | None) -> str:
     if value is None or pd.isna(value):
         return "NaN"
     return f"{value * 100:.2f}%"
+
+
+def _format_percent_one_decimal(value: float | None) -> str:
+    if value is None or pd.isna(value):
+        return "NaN"
+    return f"{value * 100:.1f}%"
+
+
+def _load_torch_artifact(path: str | Path) -> dict[str, Any]:
+    target = _require_file(path)
+    try:
+        loaded = torch.load(target, map_location="cpu", weights_only=False)
+    except TypeError:
+        loaded = torch.load(target, map_location="cpu")
+    if not isinstance(loaded, dict):
+        raise ValueError(f"Expected a dictionary torch artifact at {target}.")
+    return loaded
 
 
 def _firewall_condition_means(firewall: pd.DataFrame) -> pd.DataFrame:
@@ -305,6 +329,300 @@ def plot_result_storyboard(raw_dir: str | Path, output_path: str | Path) -> None
     plt.close(fig)
 
 
+def plot_attack_defense_ladder(raw_dir: str | Path, output_path: str | Path) -> None:
+    """Plot the central story: FGSM looks strong, PGD breaks it, Firewall recovers."""
+    raw_path = Path(raw_dir)
+    clean = pd.read_csv(_require_file(raw_path / "clean_accuracy.csv"))
+    fgsm = pd.read_csv(_require_file(raw_path / "fgsm_robustness.csv"))
+    pgd10 = pd.read_csv(_require_file(raw_path / "pgd_whitebox.csv"))
+    pgd20 = pd.read_csv(_require_file(raw_path / "pgd20_restart5_whitebox.csv"))
+    firewall = pd.read_csv(_require_file(raw_path / "firewall_results.csv"))
+
+    model_key = "smallcnn_fgsm_at"
+    clean_value = float(clean[clean["model"] == model_key]["clean_accuracy"].mean())
+    fgsm_value = float(
+        fgsm[(fgsm["model"] == model_key) & np.isclose(fgsm["epsilon"].astype(float), 0.25)][
+            "robust_accuracy"
+        ].mean()
+    )
+    pgd10_value = float(pgd10[pgd10["model"] == model_key]["robust_accuracy"].mean())
+    pgd20_value = float(pgd20[pgd20["model"] == model_key]["robust_accuracy"].mean())
+    firewall_value = float(
+        firewall[(firewall["model"] == model_key) & (firewall["condition"] == "PGD")][
+            "final_safe_accuracy"
+        ].mean()
+    )
+
+    stages = [
+        ("Clean\naccuracy", clean_value, PRESENTATION_COLORS["clean"], "Normal performance is preserved"),
+        ("FGSM\nrobust", fgsm_value, PRESENTATION_COLORS["fgsm"], "Single-step attack looks defended"),
+        ("PGD-10\nrobust", pgd10_value, PRESENTATION_COLORS["pgd"], "Iterative attack exposes collapse"),
+        ("PGD-20\n5 restarts", pgd20_value, "#7f4c8a", "Stronger PGD confirms the weakness"),
+        ("Firewall PGD\nfinal safe", firewall_value, PRESENTATION_COLORS["firewall"], "Input-stage defense recovers safety"),
+    ]
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    fig, axis = plt.subplots(figsize=(14, 6.8))
+    axis.set_facecolor("#fbfcfe")
+    x_positions = np.arange(len(stages))
+    values = [stage[1] for stage in stages]
+    colors = [stage[2] for stage in stages]
+
+    axis.plot(x_positions, values, color="#b8c1cc", linewidth=3, zorder=1)
+    axis.scatter(x_positions, values, s=520, c=colors, edgecolors="white", linewidths=3, zorder=3)
+    for index, (_label, value, color, note) in enumerate(stages):
+        axis.text(
+            index,
+            value + 0.065 if value < 0.9 else value - 0.11,
+            _format_percent_one_decimal(value),
+            ha="center",
+            va="bottom" if value < 0.9 else "top",
+            fontsize=18,
+            weight="bold",
+            color=color,
+        )
+        axis.text(
+            index,
+            -0.13,
+            note,
+            ha="center",
+            va="top",
+            fontsize=10,
+            color="#4a535d",
+            wrap=True,
+        )
+    axis.axhspan(0.9, 1.0, color="#dceee5", alpha=0.7, label="90% reference zone")
+    axis.set_xticks(x_positions, [stage[0] for stage in stages], fontsize=12)
+    axis.set_ylim(-0.22, 1.08)
+    axis.set_ylabel("Accuracy / final safe accuracy")
+    axis.set_title(
+        "SmallCNN FGSM-AT Story: strong FGSM score, PGD collapse, Firewall recovery",
+        fontsize=16,
+        weight="bold",
+        pad=18,
+    )
+    axis.grid(axis="y", alpha=0.25)
+    axis.spines[["top", "right"]].set_visible(False)
+    axis.legend(loc="upper center", frameon=False)
+    plt.tight_layout()
+    plt.savefig(output, dpi=220)
+    plt.close(fig)
+
+
+def plot_presentation_dashboard(raw_dir: str | Path, output_path: str | Path) -> None:
+    """Create a single 16:9 presentation dashboard for the whole project."""
+    raw_path = Path(raw_dir)
+    clean = pd.read_csv(_require_file(raw_path / "clean_accuracy.csv"))
+    fgsm = pd.read_csv(_require_file(raw_path / "fgsm_robustness.csv"))
+    pgd10 = pd.read_csv(_require_file(raw_path / "pgd_whitebox.csv"))
+    pgd20 = pd.read_csv(_require_file(raw_path / "pgd20_restart5_whitebox.csv"))
+    firewall = pd.read_csv(_require_file(raw_path / "firewall_results.csv"))
+
+    model_key = "smallcnn_fgsm_at"
+    clean_value = float(clean[clean["model"] == model_key]["clean_accuracy"].mean())
+    fgsm_value = float(
+        fgsm[(fgsm["model"] == model_key) & np.isclose(fgsm["epsilon"].astype(float), 0.25)][
+            "robust_accuracy"
+        ].mean()
+    )
+    pgd10_value = float(pgd10[pgd10["model"] == model_key]["robust_accuracy"].mean())
+    pgd20_value = float(pgd20[pgd20["model"] == model_key]["robust_accuracy"].mean())
+    firewall_pgd = float(
+        firewall[(firewall["model"] == model_key) & (firewall["condition"] == "PGD")][
+            "final_safe_accuracy"
+        ].mean()
+    )
+    firewall_standard_pgd = float(
+        firewall[(firewall["model"] == "smallcnn_standard") & (firewall["condition"] == "PGD")][
+            "final_safe_accuracy"
+        ].mean()
+    )
+
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    fig = plt.figure(figsize=(16, 9), facecolor="#f4f6f8")
+    grid = fig.add_gridspec(3, 4, height_ratios=[0.45, 1.1, 1.25], hspace=0.42, wspace=0.32)
+
+    title_axis = fig.add_subplot(grid[0, :])
+    title_axis.axis("off")
+    title_axis.text(
+        0.0,
+        0.72,
+        "FGSM adversarial training is not enough: PGD and transfer reveal limits",
+        fontsize=23,
+        weight="bold",
+        color="#17202c",
+        transform=title_axis.transAxes,
+    )
+    title_axis.text(
+        0.0,
+        0.20,
+        "3 seeds, full MNIST test set. Firewall values are final safe accuracy, not ordinary robust accuracy.",
+        fontsize=12,
+        color="#5c6670",
+        transform=title_axis.transAxes,
+    )
+
+    cards = [
+        ("Clean kept", clean_value, "SmallCNN FGSM-AT", PRESENTATION_COLORS["clean"]),
+        ("FGSM robust", fgsm_value, "same attack, eps=0.25", PRESENTATION_COLORS["fgsm"]),
+        ("PGD-20 robust", pgd20_value, "mean, 3 seeds, 5 restarts", PRESENTATION_COLORS["pgd"]),
+        ("Firewall PGD safe", firewall_pgd, "detect + purify + reject", PRESENTATION_COLORS["firewall"]),
+    ]
+    for index, (title, value, detail, color) in enumerate(cards):
+        axis = fig.add_subplot(grid[1, index])
+        axis.set_facecolor("white")
+        axis.set_xticks([])
+        axis.set_yticks([])
+        for spine in axis.spines.values():
+            spine.set_color("#d8dee7")
+        axis.text(0.06, 0.78, title, fontsize=13, weight="bold", color="#27313c", transform=axis.transAxes)
+        axis.text(0.06, 0.36, _format_percent_one_decimal(value), fontsize=30, weight="bold", color=color, transform=axis.transAxes)
+        axis.text(0.06, 0.14, detail, fontsize=10.5, color="#5c6670", transform=axis.transAxes)
+        axis.axhline(0.04, xmin=0.06, xmax=0.94, color=color, linewidth=4)
+
+    axis = fig.add_subplot(grid[2, :2])
+    ladder_labels = ["Clean", "FGSM", "PGD-10", "PGD-20", "Firewall"]
+    ladder_values = [clean_value, fgsm_value, pgd10_value, pgd20_value, firewall_pgd]
+    ladder_colors = [
+        PRESENTATION_COLORS["clean"],
+        PRESENTATION_COLORS["fgsm"],
+        PRESENTATION_COLORS["pgd"],
+        "#7f4c8a",
+        PRESENTATION_COLORS["firewall"],
+    ]
+    x_positions = np.arange(len(ladder_labels))
+    axis.plot(x_positions, ladder_values, color="#bdc7d2", linewidth=3)
+    axis.scatter(x_positions, ladder_values, s=250, color=ladder_colors, edgecolor="white", linewidth=2, zorder=3)
+    for x_position, value, color in zip(x_positions, ladder_values, ladder_colors, strict=True):
+        axis.text(x_position, value + 0.05, _format_percent_one_decimal(value), ha="center", color=color, weight="bold")
+    axis.set_xticks(x_positions, ladder_labels)
+    axis.set_ylim(0, 1.08)
+    axis.set_title("SmallCNN FGSM-AT trajectory")
+    axis.set_ylabel("Accuracy / final safe accuracy")
+    axis.grid(axis="y", alpha=0.25)
+    axis.spines[["top", "right"]].set_visible(False)
+
+    axis = fig.add_subplot(grid[2, 2:])
+    condition_order = ["Clean", "FGSM", "PGD"]
+    means = (
+        firewall.groupby(["model", "condition"])["final_safe_accuracy"]
+        .mean()
+        .unstack()
+        .reindex(index=["smallcnn_standard", "smallcnn_fgsm_at"], columns=condition_order)
+    )
+    bar_width = 0.36
+    positions = np.arange(len(condition_order))
+    for offset, row_key, color, label in [
+        (-bar_width / 2, "smallcnn_standard", "#4e79a7", "SmallCNN Standard"),
+        (bar_width / 2, "smallcnn_fgsm_at", PRESENTATION_COLORS["firewall"], "SmallCNN FGSM-AT"),
+    ]:
+        values = means.loc[row_key].to_numpy(dtype=float)
+        bars = axis.bar(positions + offset, values, bar_width, label=label, color=color)
+        for bar, value in zip(bars, values, strict=True):
+            axis.text(
+                bar.get_x() + bar.get_width() / 2,
+                value + 0.025,
+                _format_percent_one_decimal(float(value)),
+                ha="center",
+                fontsize=9,
+                color=color,
+                weight="bold",
+            )
+    axis.axhline(0.9, color="#555555", linestyle="--", linewidth=1, label="90% reference")
+    axis.set_xticks(positions, condition_order)
+    axis.set_ylim(0, 1.08)
+    axis.set_title("Firewall final safe accuracy")
+    axis.set_ylabel("Final safe accuracy")
+    axis.grid(axis="y", alpha=0.25)
+    axis.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=3)
+    axis.spines[["top", "right"]].set_visible(False)
+
+    fig.text(
+        0.99,
+        0.01,
+        f"Key PGD recovery: SmallCNN standard {firewall_standard_pgd * 100:.2f}%, SmallCNN FGSM-AT {firewall_pgd * 100:.2f}%",
+        ha="right",
+        fontsize=10,
+        color="#5c6670",
+    )
+    plt.savefig(output, dpi=220, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_firewall_pipeline_strip(raw_dir: str | Path, output_path: str | Path) -> None:
+    """Create a readable sample-level Firewall pipeline strip from saved examples."""
+    raw_path = Path(raw_dir)
+    examples = _load_torch_artifact(raw_path / "firewall_examples.pt")
+    condition = "PGD"
+    condition_examples = examples.get("conditions", {}).get(condition)
+    if not isinstance(condition_examples, dict):
+        raise ValueError("firewall_examples.pt does not contain PGD examples.")
+
+    labels = condition_examples["labels"]
+    columns = min(4, int(labels.shape[0]))
+    output = Path(output_path)
+    ensure_dir(output.parent)
+    fig, axes = plt.subplots(3, columns, figsize=(columns * 3.0, 7.2), facecolor="#f4f6f8")
+    if columns == 1:
+        axes = np.asarray(axes).reshape(3, 1)
+    row_specs = [
+        ("Original", "original", PRESENTATION_COLORS["clean"]),
+        ("PGD input", "input", PRESENTATION_COLORS["pgd"]),
+        ("Purified", "purified", PRESENTATION_COLORS["firewall"]),
+    ]
+    for row_index, (row_label, tensor_key, color) in enumerate(row_specs):
+        for column_index in range(columns):
+            axis = axes[row_index, column_index]
+            axis.imshow(
+                condition_examples[tensor_key][column_index, 0].detach().numpy(),
+                cmap="gray",
+                vmin=0.0,
+                vmax=1.0,
+            )
+            axis.set_xticks([])
+            axis.set_yticks([])
+            for spine in axis.spines.values():
+                spine.set_color(color)
+                spine.set_linewidth(2)
+            if column_index == 0:
+                axis.set_ylabel(row_label, fontsize=12, weight="bold", color=color)
+            if row_index == 0:
+                axis.set_title(f"label {int(labels[column_index])}", fontsize=11)
+            if row_index == 1:
+                pred = int(condition_examples["input_predictions"][column_index])
+                axis.text(0.5, -0.08, f"input pred {pred}", transform=axis.transAxes, ha="center", va="top", fontsize=9)
+            if row_index == 2:
+                pred = int(condition_examples["purified_predictions"][column_index])
+                score = float(condition_examples["scores"][column_index])
+                decision = str(condition_examples["decisions"][column_index]).replace("_", " ")
+                axis.text(
+                    0.5,
+                    -0.08,
+                    f"purified pred {pred}\nscore {score:.4f}\n{decision}",
+                    transform=axis.transAxes,
+                    ha="center",
+                    va="top",
+                    fontsize=8,
+                )
+    fig.suptitle(
+        "Adversarial Firewall sample flow: original -> PGD input -> purified decision",
+        fontsize=16,
+        weight="bold",
+    )
+    fig.text(
+        0.5,
+        0.02,
+        "Examples are embedded from results/raw/firewall_examples.pt; the figure replays saved outputs and does not rerun attacks.",
+        ha="center",
+        fontsize=10,
+        color="#5c6670",
+    )
+    plt.tight_layout(rect=(0, 0.05, 1, 0.93))
+    plt.savefig(output, dpi=220)
+    plt.close(fig)
+
+
 def _checkpoint_inventory(checkpoints_dir: str | Path) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for path in sorted(Path(checkpoints_dir).glob("*.pt")):
@@ -323,12 +641,14 @@ def _metrics_for_html(config: dict[str, Any]) -> dict[str, str]:
     clean = pd.read_csv(_require_file(raw_dir / "clean_accuracy.csv"))
     fgsm = pd.read_csv(_require_file(raw_dir / "fgsm_robustness.csv"))
     pgd = pd.read_csv(_require_file(raw_dir / "pgd_whitebox.csv"))
+    pgd20 = pd.read_csv(_require_file(raw_dir / "pgd20_restart5_whitebox.csv"))
     firewall = pd.read_csv(_require_file(raw_dir / "firewall_results.csv"))
 
     clean_mean = clean.groupby("model")["clean_accuracy"].mean()
     fgsm_025 = fgsm[np.isclose(fgsm["epsilon"].astype(float), 0.25)]
     fgsm_mean = fgsm_025.groupby("model")["robust_accuracy"].mean()
     pgd_mean = pgd.groupby("model")["robust_accuracy"].mean()
+    pgd20_mean = pgd20.groupby("model")["robust_accuracy"].mean()
     firewall_pgd = firewall[
         (firewall["model"] == "smallcnn_fgsm_at") & (firewall["condition"] == "PGD")
     ]
@@ -339,6 +659,7 @@ def _metrics_for_html(config: dict[str, Any]) -> dict[str, str]:
         "smallcnn_clean": _format_percent(float(clean_mean.get("smallcnn_fgsm_at", math.nan))),
         "smallcnn_fgsm": _format_percent(float(fgsm_mean.get("smallcnn_fgsm_at", math.nan))),
         "smallcnn_pgd": _format_percent(float(pgd_mean.get("smallcnn_fgsm_at", math.nan))),
+        "smallcnn_pgd20": _format_percent(float(pgd20_mean.get("smallcnn_fgsm_at", math.nan))),
         "firewall_pgd_safe": _format_percent(firewall_pgd_safe),
         "firewall_seed_note": "Firewall 값은 seed 42, 123, 2026 full test 평균입니다.",
     }
@@ -381,6 +702,9 @@ def build_visual_report(config: dict[str, Any]) -> Path:
     plot_autoencoder_progress(raw_dir, figures_dir / "autoencoder_training_progress.png")
     plot_pipeline_flow(figures_dir / "project_pipeline_flow.png")
     plot_result_storyboard(raw_dir, figures_dir / "result_storyboard.png")
+    plot_presentation_dashboard(raw_dir, figures_dir / "presentation_dashboard.png")
+    plot_attack_defense_ladder(raw_dir, figures_dir / "attack_defense_ladder.png")
+    plot_firewall_pipeline_strip(raw_dir, figures_dir / "firewall_pipeline_strip.png")
     generate_figures_index(figures_dir, figures_dir / "figure_index.md")
 
     metrics = _metrics_for_html(config)
@@ -388,6 +712,16 @@ def build_visual_report(config: dict[str, Any]) -> Path:
     checkpoint_count = int(checkpoints.shape[0])
 
     cards = [
+        _figure_card(
+            "Attack-Defense Ladder",
+            "../figures/attack_defense_ladder.png",
+            "A presentation-friendly line showing clean performance, FGSM robustness, PGD collapse, and Firewall recovery.",
+        ),
+        _figure_card(
+            "Firewall Pipeline Strip",
+            "../figures/firewall_pipeline_strip.png",
+            "Saved PGD examples replayed as original, attacked input, and purified Firewall decision.",
+        ),
         _figure_card(
             "Project Flow",
             "../figures/project_pipeline_flow.png",
@@ -495,6 +829,19 @@ def build_visual_report(config: dict[str, Any]) -> Path:
     }}
     .metric strong {{ display: block; font-size: 28px; }}
     .metric span {{ color: var(--muted); font-size: 13px; }}
+    .hero-figure {{
+      margin: 18px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+    }}
+    .hero-figure img {{
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }}
     .grid {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
@@ -539,10 +886,13 @@ def build_visual_report(config: dict[str, Any]) -> Path:
       <div class="metrics">
         <div class="metric"><span>SmallCNN FGSM-AT clean accuracy</span><strong>{metrics["smallcnn_clean"]}</strong></div>
         <div class="metric"><span>SmallCNN FGSM-AT FGSM eps=0.25</span><strong>{metrics["smallcnn_fgsm"]}</strong></div>
-        <div class="metric"><span>SmallCNN FGSM-AT PGD eps=0.25</span><strong>{metrics["smallcnn_pgd"]}</strong></div>
+        <div class="metric"><span>SmallCNN FGSM-AT PGD-20 restart 5</span><strong>{metrics["smallcnn_pgd20"]}</strong></div>
         <div class="metric"><span>Firewall PGD final safe accuracy</span><strong>{metrics["firewall_pgd_safe"]}</strong></div>
       </div>
       <p class="note">{metrics["firewall_seed_note"]} 기존 FGSM/PGD/전이성 실험도 seed 42, 123, 2026 결과를 포함합니다.</p>
+      <div class="hero-figure">
+        <img src="../figures/presentation_dashboard.png" alt="Presentation dashboard">
+      </div>
     </section>
 
     <section>

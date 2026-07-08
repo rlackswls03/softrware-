@@ -962,6 +962,9 @@ def generate_figures_index(figures_dir: str | Path, output_path: str | Path) -> 
         "autoencoder_training_progress.png": "Adversarial Firewall autoencoder purifier의 reconstruction loss 변화",
         "project_pipeline_flow.png": "전체 프로젝트 흐름: 모델 학습, 공격 평가, 한계 진단, Firewall 확장",
         "result_storyboard.png": "FGSM 강건성, PGD 취약성, Firewall final safe accuracy를 한 장에 요약한 결과 스토리보드",
+        "presentation_dashboard.png": "발표 첫 장으로 사용할 수 있는 핵심 결과 대시보드",
+        "attack_defense_ladder.png": "SmallCNN FGSM-AT 기준 clean, FGSM, PGD, Firewall 회복 흐름",
+        "firewall_pipeline_strip.png": "원본, PGD 입력, 정화 결과를 샘플 단위로 보여주는 Firewall 파이프라인 스트립",
     }
     lines = ["# Figure Index", ""]
     for figure in sorted(figures_path.glob("*.png")):

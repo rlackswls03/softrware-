@@ -6,6 +6,12 @@
 
 ![](adversarial_examples.png)
 
+## attack_defense_ladder.png
+
+SmallCNN FGSM-AT 기준 clean, FGSM, PGD, Firewall 회복 흐름
+
+![](attack_defense_ladder.png)
+
 ## autoencoder_training_progress.png
 
 Adversarial Firewall autoencoder purifier의 reconstruction loss 변화
@@ -42,6 +48,12 @@ reconstruction error 기반 적대적 입력 탐지 ROC curve
 
 ![](firewall_detection_roc_curve.png)
 
+## firewall_pipeline_strip.png
+
+원본, PGD 입력, 정화 결과를 샘플 단위로 보여주는 Firewall 파이프라인 스트립
+
+![](firewall_pipeline_strip.png)
+
 ## firewall_score_distribution.png
 
 Adversarial Firewall reconstruction error 점수 분포
@@ -65,6 +77,12 @@ PGD-20 restart 5회 white-box robust accuracy 비교. full test 10,000개, seed 
 PGD L-infinity white-box robust accuracy 비교. 평균, 표준편차, seed별 점을 함께 표시
 
 ![](pgd_whitebox.png)
+
+## presentation_dashboard.png
+
+발표 첫 장으로 사용할 수 있는 핵심 결과 대시보드
+
+![](presentation_dashboard.png)
 
 ## project_pipeline_flow.png
 
